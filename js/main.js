@@ -1,0 +1,287 @@
+/**
+ * main.js — 게임 상태 관리 및 이벤트 바인딩
+ */
+(function () {
+  const { Board, DIFFICULTIES } = window.ShisenBoard;
+  const { THEMES } = window.ShisenThemes;
+  const Sound = window.ShisenSound;
+  const $ = id => document.getElementById(id);
+
+  const COMBO_WINDOW = 3000;
+  const CLEAR_MESSAGES = [
+    '오늘도 최고예요 💕', '역시 사천성 달인! 👑', '눈썰미가 반짝반짝 ✨',
+    '쉬었다 가도 좋아요 ☕', '완벽한 한 판이었어요 🌷',
+  ];
+
+  const renderer = new window.ShisenRenderer({
+    board: $('board'), path: $('path-layer'), fx: $('fx-layer'),
+    frame: $('board-frame'), stage: $('stage'),
+  });
+
+  const saved = JSON.parse(localStorage.getItem('shisen-settings') || '{}');
+  const state = {
+    board: null,
+    difficulty: saved.difficulty || 'normal',
+    theme: saved.theme || 'fruit',
+    selected: null,
+    startTime: 0,
+    elapsed: 0,
+    timerId: null,
+    combo: 0,
+    lastMatch: 0,
+    finished: false,
+  };
+  Sound.enabled = saved.sound !== false;
+
+  // ---------- 초기 UI ----------
+  const themeSelect = $('select-theme');
+  Object.entries(THEMES).forEach(([key, t]) => {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = `${t.icon} ${t.name}`;
+    themeSelect.appendChild(opt);
+  });
+  themeSelect.value = state.theme;
+  $('select-difficulty').value = state.difficulty;
+  updateSoundBtn();
+
+  function saveSettings() {
+    localStorage.setItem('shisen-settings', JSON.stringify({
+      difficulty: state.difficulty, theme: state.theme, sound: Sound.enabled,
+    }));
+  }
+
+  // ---------- 타이머 ----------
+  function fmt(ms) {
+    const s = Math.floor(ms / 1000);
+    return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  }
+  function startTimer() {
+    stopTimer();
+    state.startTime = Date.now() - state.elapsed;
+    state.timerId = setInterval(() => {
+      state.elapsed = Date.now() - state.startTime;
+      $('stat-time').textContent = fmt(state.elapsed);
+    }, 250);
+  }
+  function stopTimer() { clearInterval(state.timerId); state.timerId = null; }
+
+  function bestKey() { return `shisen-best-${state.difficulty}`; }
+  function showBest() {
+    const best = Number(localStorage.getItem(bestKey()));
+    $('stat-best').textContent = best ? fmt(best) : '--:--';
+  }
+
+  function updateStats() {
+    $('stat-remaining').textContent = state.board.remaining();
+    $('btn-undo').disabled = state.board.history.length === 0 || state.finished;
+  }
+
+  // ---------- 토스트 / 콤보 ----------
+  let toastTimer = null;
+  function toast(msg) {
+    const el = $('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+  }
+  function showCombo(n) {
+    const el = $('combo');
+    el.textContent = n >= 5 ? `${n} Combo! 🔥` : `${n} Combo! ✨`;
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
+  }
+
+  // ---------- 게임 흐름 ----------
+  function newGame() {
+    const diff = DIFFICULTIES[state.difficulty];
+    const rect = $('stage').getBoundingClientRect();
+    const portrait = rect.height > rect.width * 1.1;
+    // 세로 화면에서는 행/열을 바꿔 타일을 크게 보여준다
+    const rows = portrait ? diff.cols : diff.rows;
+    const cols = portrait ? diff.rows : diff.cols;
+
+    state.board = new Board(rows, cols);
+    state.selected = null;
+    state.elapsed = 0;
+    state.combo = 0;
+    state.finished = false;
+    $('stat-time').textContent = '00:00';
+    $('clear-modal').hidden = true;
+    renderer.build(state.board, state.theme);
+    showBest();
+    updateStats();
+    startTimer();
+  }
+
+  function select(p) {
+    state.selected = p;
+    renderer.setSelected(p, true);
+  }
+  function deselect() {
+    if (state.selected) renderer.setSelected(state.selected, false);
+    state.selected = null;
+  }
+
+  function onTileClick(p) {
+    if (state.finished) return;
+    Sound.unlock();
+    renderer.clearHints();
+    const cur = state.selected;
+
+    if (!cur) { select(p); Sound.select(); return; }
+    if (cur.r === p.r && cur.c === p.c) { deselect(); return; }
+
+    const board = state.board;
+    if (board.get(cur.r, cur.c) !== board.get(p.r, p.c)) {
+      // 다른 그림이면 새 타일로 선택 전환
+      deselect();
+      select(p);
+      Sound.select();
+      return;
+    }
+
+    const path = board.tryMatch(cur, p);
+    if (!path) {
+      // 같은 그림인데 연결 불가: 흔들고 선택 전환
+      renderer.shake(p);
+      renderer.shake(cur);
+      Sound.fail();
+      deselect();
+      select(p);
+      return;
+    }
+
+    // 매칭 성공
+    const now = Date.now();
+    state.combo = now - state.lastMatch <= COMBO_WINDOW ? state.combo + 1 : 1;
+    state.lastMatch = now;
+    state.selected = null;
+    renderer.drawPath(path.points);
+    renderer.removeTiles(cur, p, state.combo);
+    Sound.match(state.combo);
+    if (state.combo >= 2) showCombo(state.combo);
+    updateStats();
+
+    if (board.isCleared()) { finish(); return; }
+
+    if (!board.hasMoves()) {
+      setTimeout(() => {
+        deselect();
+        board.shuffle();
+        renderer.refreshAll(board);
+        Sound.shuffle();
+        toast('더 이상 맞출 짝이 없어서 타일을 섞었어요! 🔀');
+        updateStats();
+      }, 450);
+    }
+  }
+
+  function finish() {
+    state.finished = true;
+    stopTimer();
+    updateStats();
+    const prev = Number(localStorage.getItem(bestKey()));
+    const isBest = !prev || state.elapsed < prev;
+    if (isBest) localStorage.setItem(bestKey(), String(state.elapsed));
+    showBest();
+    setTimeout(() => {
+      Sound.clear();
+      $('clear-emoji').textContent = isBest ? '🏆' : '🎉';
+      $('clear-title').textContent = isBest ? '최고 기록 달성!' : '모두 맞췄어요!';
+      const msg = CLEAR_MESSAGES[Math.floor(Math.random() * CLEAR_MESSAGES.length)];
+      $('clear-text').innerHTML =
+        `${DIFFICULTIES[state.difficulty].name} 난이도를 <strong>${fmt(state.elapsed)}</strong> 만에 클리어!<br>${msg}`;
+      $('clear-modal').hidden = false;
+      $('btn-again').focus();
+    }, 600);
+  }
+
+  // ---------- 이벤트 ----------
+  $('board').addEventListener('click', e => {
+    const tile = e.target.closest('.tile');
+    if (!tile || tile.classList.contains('removing')) return;
+    onTileClick({ r: Number(tile.dataset.r), c: Number(tile.dataset.c) });
+  });
+
+  $('btn-hint').addEventListener('click', () => {
+    if (state.finished) return;
+    const [pair] = state.board.availablePairs(1);
+    if (!pair) return;
+    deselect();
+    renderer.hint(pair);
+    Sound.hint();
+  });
+
+  $('btn-shuffle').addEventListener('click', () => {
+    if (state.finished) return;
+    deselect();
+    renderer.clearHints();
+    state.board.shuffle();
+    renderer.refreshAll(state.board);
+    Sound.shuffle();
+    updateStats();
+  });
+
+  $('btn-undo').addEventListener('click', () => {
+    if (state.finished) return;
+    const last = state.board.undo();
+    if (!last) return;
+    deselect();
+    renderer.placeTile(last.a.r, last.a.c, last.value, 0);
+    renderer.placeTile(last.b.r, last.b.c, last.value, 60);
+    state.combo = 0;
+    updateStats();
+  });
+
+  $('btn-new').addEventListener('click', newGame);
+  $('btn-again').addEventListener('click', newGame);
+
+  $('select-difficulty').addEventListener('change', e => {
+    state.difficulty = e.target.value;
+    saveSettings();
+    newGame();
+  });
+
+  themeSelect.addEventListener('change', e => {
+    state.theme = e.target.value;
+    saveSettings();
+    renderer.retheme(state.board, state.theme);
+    $('board').blur();
+  });
+
+  function updateSoundBtn() {
+    $('btn-sound').textContent = Sound.enabled ? '🔊' : '🔇';
+    $('btn-sound').setAttribute('aria-pressed', String(Sound.enabled));
+  }
+  $('btn-sound').addEventListener('click', () => {
+    Sound.enabled = !Sound.enabled;
+    updateSoundBtn();
+    saveSettings();
+    if (Sound.enabled) Sound.select();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'SELECT') return;
+    if (e.key === 'h' || e.key === 'H') $('btn-hint').click();
+    else if (e.key === 's' || e.key === 'S') $('btn-shuffle').click();
+    else if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey)) $('btn-undo').click();
+    else if (e.key === 'Escape') deselect();
+  });
+
+  // 탭이 숨겨지면 타이머 일시정지
+  document.addEventListener('visibilitychange', () => {
+    if (state.finished) return;
+    if (document.hidden) stopTimer(); else startTimer();
+  });
+
+  let resizeRaf = 0;
+  window.addEventListener('resize', () => {
+    cancelAnimationFrame(resizeRaf);
+    resizeRaf = requestAnimationFrame(() => renderer.fit());
+  });
+
+  newGame();
+})();
