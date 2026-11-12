@@ -8,6 +8,8 @@
   const $ = id => document.getElementById(id);
 
   const COMBO_WINDOW = 3000;
+  const MAX_HINTS = 5;
+  const MAX_SHUFFLES = 1;
   const CLEAR_MESSAGES = [
     '오늘도 최고예요 💕', '역시 사천성 달인! 👑', '눈썰미가 반짝반짝 ✨',
     '쉬었다 가도 좋아요 ☕', '완벽한 한 판이었어요 🌷',
@@ -24,6 +26,8 @@
     difficulty: saved.difficulty || 'easy',
     theme: saved.theme || 'fruit',
     selected: null,
+    hintsLeft: MAX_HINTS,
+    shufflesLeft: MAX_SHUFFLES,
     startTime: 0,
     elapsed: 0,
     timerId: null,
@@ -80,6 +84,12 @@
   function updateStats() {
     $('stat-remaining').textContent = state.board.remaining();
     $('btn-undo').disabled = state.board.history.length === 0 || state.finished;
+    // 힌트 횟수 뱃지 및 버튼 상태
+    $('badge-hint').textContent = state.hintsLeft;
+    $('btn-hint').disabled = state.hintsLeft <= 0 || state.finished;
+    // 섞기 횟수 뱃지 및 버튼 상태
+    $('badge-shuffle').textContent = state.shufflesLeft;
+    $('btn-shuffle').disabled = state.shufflesLeft <= 0 || state.finished;
   }
 
   // ---------- 토스트 / 콤보 ----------
@@ -110,6 +120,8 @@
 
     state.board = new Board(rows, cols);
     state.selected = null;
+    state.hintsLeft = MAX_HINTS;
+    state.shufflesLeft = MAX_SHUFFLES;
     state.elapsed = 0;
     state.combo = 0;
     state.finished = false;
@@ -274,15 +286,26 @@
 
   $('btn-hint').addEventListener('click', () => {
     if (state.finished) return;
+    if (state.hintsLeft <= 0) {
+      toast('힌트를 모두 사용했어요! (최대 5회) 💡');
+      return;
+    }
     const [pair] = state.board.availablePairs(1);
     if (!pair) return;
+    state.hintsLeft--;
     deselect();
     renderer.hint(pair);
     Sound.hint();
+    updateStats();
   });
 
   $('btn-shuffle').addEventListener('click', () => {
     if (state.finished) return;
+    if (state.shufflesLeft <= 0) {
+      toast('섞기를 모두 사용했어요! (최대 1회) 🔀');
+      return;
+    }
+    state.shufflesLeft--;
     deselect();
     renderer.clearHints();
     state.board.shuffle();
