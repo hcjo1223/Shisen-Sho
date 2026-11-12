@@ -341,14 +341,16 @@
     saveSettings();
   });
 
-  // 사용자의 첫 인터랙션 시 오디오 컨텍스트 및 BGM 자동 잠금 해제
+  // 사용자의 첫 인터랙션 시 오디오 컨텍스트 및 BGM 자동 잠금 해제 (모바일 사파리/크롬 대응)
   const unlockAudioOnce = () => {
     Sound.unlock();
-    document.removeEventListener('pointerdown', unlockAudioOnce);
-    document.removeEventListener('keydown', unlockAudioOnce);
+    ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown'].forEach(evt => {
+      document.removeEventListener(evt, unlockAudioOnce);
+    });
   };
-  document.addEventListener('pointerdown', unlockAudioOnce);
-  document.addEventListener('keydown', unlockAudioOnce);
+  ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown'].forEach(evt => {
+    document.addEventListener(evt, unlockAudioOnce, { passive: true });
+  });
 
   document.addEventListener('keydown', e => {
     if (e.target.tagName === 'SELECT') return;

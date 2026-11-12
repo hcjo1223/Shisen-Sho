@@ -12,7 +12,9 @@
       if (!AC) return null;
       ctx = new AC();
     }
-    if (ctx.state === 'suspended') ctx.resume();
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
     return ctx;
   }
 
@@ -27,7 +29,7 @@
     osc.type = o.type || 'sine';
     osc.frequency.setValueAtTime(freq, t0);
     gain.gain.setValueAtTime(0.0001, t0);
-    gain.gain.exponentialRampToValueAtTime(o.vol || 0.18, t0 + 0.01);
+    gain.gain.exponentialRampToValueAtTime(o.vol || 0.22, t0 + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
     osc.connect(gain).connect(a.destination);
     osc.start(t0);
@@ -54,7 +56,6 @@
 
   // =========================================================================
   // 8비트 칩튠 (도트 감성) BGM 엔진
-  // 레트로 게임보이/패미컴 풍 사각파(square) 멜로디 + 삼각파(triangle) 아르페지오 베이스
   // =========================================================================
   const TEMPO = 118; // BPM
   const STEP = 60 / TEMPO / 2; // 16분음표 길이 (~0.127초)
@@ -74,7 +75,7 @@
     NOTE.C5, NOTE.E5, NOTE.G5, NOTE.D5, NOTE.C5, 0, 0, 0,
   ];
 
-  // 8분음표 베이스라인 (루프당 32스텝, 각 2STEP 동안 유지)
+  // 8분음표 베이스라인
   const BASS = [
     NOTE.C3, NOTE.G3, NOTE.C4, NOTE.G3,  NOTE.A3, NOTE.E3, NOTE.A3, NOTE.E3,
     NOTE.F3, NOTE.C3, NOTE.F3, NOTE.C3,  NOTE.G3, NOTE.D3, NOTE.G3, NOTE.B3,
@@ -93,20 +94,20 @@
     if (!a) return;
     if (!bgmMasterGain) {
       bgmMasterGain = a.createGain();
-      bgmMasterGain.gain.setValueAtTime(bgmEnabled ? 0.08 : 0.0001, a.currentTime);
+      // 스마트폰 스피커에서도 똑똑히 들리도록 게인 상향 (0.08 -> 0.22)
+      bgmMasterGain.gain.setValueAtTime(bgmEnabled ? 0.22 : 0.0001, a.currentTime);
       bgmMasterGain.connect(a.destination);
     }
   }
 
   function play8bitChirp(freq, time, dur, type, vol) {
     const a = ac();
-    if (!a || !freq) return;
+    if (!a || !freq || !bgmMasterGain) return;
     const osc = a.createOscillator();
     const g = a.createGain();
     osc.type = type || 'square';
     osc.frequency.setValueAtTime(freq, time);
-    // 레트로 칩튠 특유의 톡 떨어지는 게인 엔벨로프
-    g.gain.setValueAtTime(vol || 0.12, time);
+    g.gain.setValueAtTime(vol || 0.18, time);
     g.gain.exponentialRampToValueAtTime(0.0001, time + dur * 0.95);
     osc.connect(g).connect(bgmMasterGain);
     osc.start(time);
@@ -116,25 +117,29 @@
   function scheduleBgm() {
     const a = ac();
     if (!a || !isPlayingBgm) return;
-    // 0.25초 앞서서 오디오 버퍼 스케줄링
-    while (bgmNextTime < a.currentTime + 0.25) {
+    // 과거 시간으로 밀렸을 경우 즉시 현재 시간으로 보정
+    if (bgmNextTime < a.currentTime) {
+      bgmNextTime = a.currentTime + 0.02;
+    }
+    // 0.3초 앞서서 버퍼 스케줄링
+    while (bgmNextTime < a.currentTime + 0.3) {
       const melodyFreq = MELODY[bgmStep % MELODY.length];
       if (melodyFreq) {
-        // 리드 채널: 8비트 사각파(square)
-        play8bitChirp(melodyFreq, bgmNextTime, STEP * 0.85, 'square', 0.11);
+        // 리드 채널: 8비트 사각파
+        play8bitChirp(melodyFreq, bgmNextTime, STEP * 0.85, 'square', 0.2);
       }
-      // 베이스 채널: 2스텝(8분음표)마다 삼각파(triangle)
+      // 베이스 채널: 삼각파
       if (bgmStep % 2 === 0) {
         const bassIdx = Math.floor((bgmStep / 2) % BASS.length);
         const bassFreq = BASS[bassIdx];
         if (bassFreq) {
-          play8bitChirp(bassFreq, bgmNextTime, STEP * 1.7, 'triangle', 0.18);
+          play8bitChirp(bassFreq, bgmNextTime, STEP * 1.7, 'triangle', 0.28);
         }
       }
       bgmNextTime += STEP;
       bgmStep++;
     }
-    bgmTimer = setTimeout(scheduleBgm, 80);
+    bgmTimer = setTimeout(scheduleBgm, 70);
   }
 
   function startBgm() {
@@ -160,14 +165,19 @@
     set bgmEnabled(v) {
       bgmEnabled = !!v;
       if (bgmMasterGain && ctx) {
-        bgmMasterGain.gain.setValueAtTime(bgmEnabled ? 0.08 : 0.0001, ctx.currentTime);
+        bgmMasterGain.gain.setValueAtTime(bgmEnabled ? 0.22 : 0.0001, ctx.currentTime);
       }
       if (bgmEnabled && !isPlayingBgm) {
         startBgm();
+      } else if (!bgmEnabled && isPlayingBgm) {
+        stopBgm();
       }
     },
-    unlock() {
-      ac();
+    async unlock() {
+      const a = ac();
+      if (a && a.state === 'suspended') {
+        try { await a.resume(); } catch (e) {}
+      }
       initBgmNodes();
       if (bgmEnabled && !isPlayingBgm) startBgm();
     },
