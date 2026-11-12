@@ -1,5 +1,5 @@
 /**
- * main.js — 게임 상태 관리 및 이벤트 바인딩
+ * main.js — 화면 전환(홈/대시보드/인게임), 게임 상태 및 통계 관리
  */
 (function () {
   const { Board, DIFFICULTIES } = window.ShisenBoard;
@@ -15,16 +15,34 @@
     '쉬었다 가도 좋아요 ☕', '완벽한 한 판이었어요 🌷',
   ];
 
+  const BADGES = [
+    { id: 'first_clear', icon: '🌱', name: '첫 걸음', desc: '사천성 첫 클리어 달성' },
+    { id: 'combo_5', icon: '🔥', name: '콤보 마스터', desc: '5 콤보 달성' },
+    { id: 'hard_clear', icon: '👑', name: '달인의 길', desc: '어려움 난이도 클리어' },
+    { id: 'speedy', icon: '⚡', name: '번개눈', desc: '1분 이내 클리어' },
+    { id: 'clears_10', icon: '🏆', name: '열정 플레이어', desc: '누적 10회 클리어' },
+    { id: 'pairs_200', icon: '🍒', name: '타일 수집가', desc: '누적 200쌍 매칭' },
+  ];
+
   const renderer = new window.ShisenRenderer({
     board: $('board'), path: $('path-layer'), fx: $('fx-layer'),
     frame: $('board-frame'), stage: $('stage'),
   });
 
-  const saved = JSON.parse(localStorage.getItem('shisen-settings') || '{}');
+  // 로컬스토리지 불러오기
+  const savedSettings = JSON.parse(localStorage.getItem('shisen-settings') || '{}');
+  const stats = JSON.parse(localStorage.getItem('shisen-stats') || '{}');
+  stats.totalClears = stats.totalClears || 0;
+  stats.maxCombo = stats.maxCombo || 0;
+  stats.matchedPairs = stats.matchedPairs || 0;
+  stats.totalPlayMs = stats.totalPlayMs || 0;
+  stats.unlockedBadges = stats.unlockedBadges || [];
+
   const state = {
+    screen: 'home', // 'home' | 'dashboard' | 'game'
     board: null,
-    difficulty: saved.difficulty || 'easy',
-    theme: saved.theme || 'fruit',
+    difficulty: savedSettings.difficulty || 'easy',
+    theme: savedSettings.theme || 'fruit',
     selected: null,
     hintsLeft: MAX_HINTS,
     shufflesLeft: MAX_SHUFFLES,
@@ -35,10 +53,200 @@
     lastMatch: 0,
     finished: false,
   };
-  Sound.enabled = saved.sound !== false;
-  Sound.bgmEnabled = saved.bgm !== false;
+  Sound.enabled = savedSettings.sound !== false;
+  Sound.bgmEnabled = savedSettings.bgm !== false;
 
-  // ---------- 초기 UI ----------
+  function saveSettings() {
+    localStorage.setItem('shisen-settings', JSON.stringify({
+      difficulty: state.difficulty,
+      theme: state.theme,
+      sound: Sound.enabled,
+      bgm: Sound.bgmEnabled,
+    }));
+  }
+
+  function saveStats() {
+    localStorage.setItem('shisen-stats', JSON.stringify(stats));
+  }
+
+  // ---------- 시간 포맷 ----------
+  function fmt(ms) {
+    const s = Math.floor(ms / 1000);
+    return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  }
+
+  function bestKey(diff) { return `shisen-best-${diff || state.difficulty}`; }
+  function getBest(diff) {
+    const v = Number(localStorage.getItem(bestKey(diff)));
+    return v ? fmt(v) : '--:--';
+  }
+
+  // ==========================================================
+  // 화면 전환 관리
+  // ==========================================================
+  function switchScreen(screenName) {
+    state.screen = screenName;
+    $('screen-home').hidden = screenName !== 'home';
+    $('screen-dashboard').hidden = screenName !== 'dashboard';
+    $('screen-game').hidden = screenName !== 'game';
+
+    if (screenName === 'home') {
+      renderHomeScreen();
+      stopTimer();
+    } else if (screenName === 'dashboard') {
+      renderDashboard();
+      stopTimer();
+    } else if (screenName === 'game') {
+      renderer.fit();
+    }
+  }
+
+  // ==========================================================
+  // 1. 홈 화면 렌더링 & 이벤트
+  // ==========================================================
+  function renderHomeScreen() {
+    // 난이도 카드 활성화 및 최고 기록 표시
+    document.querySelectorAll('.diff-card').forEach(btn => {
+      const d = btn.dataset.diff;
+      const isActive = d === state.difficulty;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-checked', String(isActive));
+      const badge = $(`home-best-${d}`);
+      if (badge) badge.textContent = `최고 ${getBest(d)}`;
+    });
+
+    // 오디오 토글 상태 표시
+    $('home-btn-bgm').textContent = Sound.bgmEnabled ? '🎵 BGM 켜짐' : '🔇 BGM 꺼짐';
+    $('home-btn-sound').textContent = Sound.enabled ? '🔊 효과음 켜짐' : '🔇 효과음 꺼짐';
+
+    // 테마 칩 렌더링
+    const chipsContainer = $('home-theme-chips');
+    chipsContainer.innerHTML = '';
+    Object.entries(THEMES).forEach(([key, t]) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = `theme-chip ${key === state.theme ? 'active' : ''}`;
+      chip.setAttribute('role', 'radio');
+      chip.setAttribute('aria-checked', String(key === state.theme));
+      chip.innerHTML = `<span class="theme-chip-icon">${t.icon}</span><span>${t.name}</span>`;
+      chip.addEventListener('click', () => {
+        Sound.unlock();
+        state.theme = key;
+        saveSettings();
+        $('select-theme').value = key;
+        renderHomeScreen();
+        if (Sound.enabled) Sound.select();
+      });
+      chipsContainer.appendChild(chip);
+    });
+  }
+
+  // 홈 난이도 카드 클릭
+  document.querySelectorAll('.diff-card').forEach(card => {
+    card.addEventListener('click', () => {
+      Sound.unlock();
+      state.difficulty = card.dataset.diff;
+      saveSettings();
+      $('select-difficulty').value = state.difficulty;
+      renderHomeScreen();
+      if (Sound.enabled) Sound.select();
+    });
+  });
+
+  // 홈 게임 시작 버튼
+  $('btn-start-game').addEventListener('click', () => {
+    Sound.unlock();
+    switchScreen('game');
+    newGame();
+  });
+
+  // 홈 대시보드 열기 버튼
+  $('btn-open-dashboard').addEventListener('click', () => {
+    Sound.unlock();
+    switchScreen('dashboard');
+  });
+
+  // 홈 오디오 토글 버튼들
+  $('home-btn-bgm').addEventListener('click', () => {
+    Sound.unlock();
+    Sound.bgmEnabled = !Sound.bgmEnabled;
+    updateBgmBtn();
+    $('home-btn-bgm').textContent = Sound.bgmEnabled ? '🎵 BGM 켜짐' : '🔇 BGM 꺼짐';
+    saveSettings();
+  });
+  $('home-btn-sound').addEventListener('click', () => {
+    Sound.enabled = !Sound.enabled;
+    updateSoundBtn();
+    $('home-btn-sound').textContent = Sound.enabled ? '🔊 효과음 켜짐' : '🔇 효과음 꺼짐';
+    saveSettings();
+    if (Sound.enabled) Sound.select();
+  });
+
+  // ==========================================================
+  // 2. 대시보드 화면 렌더링
+  // ==========================================================
+  function checkBadges(lastClearTime) {
+    const newlyUnlocked = [];
+    function tryUnlock(id) {
+      if (!stats.unlockedBadges.includes(id)) {
+        stats.unlockedBadges.push(id);
+        newlyUnlocked.push(id);
+      }
+    }
+
+    if (stats.totalClears >= 1) tryUnlock('first_clear');
+    if (stats.maxCombo >= 5) tryUnlock('combo_5');
+    if (state.difficulty === 'hard') tryUnlock('hard_clear');
+    if (lastClearTime && lastClearTime <= 60000) tryUnlock('speedy');
+    if (stats.totalClears >= 10) tryUnlock('clears_10');
+    if (stats.matchedPairs >= 200) tryUnlock('pairs_200');
+
+    if (newlyUnlocked.length > 0) {
+      saveStats();
+      const bInfo = BADGES.find(b => b.id === newlyUnlocked[0]);
+      if (bInfo) toast(`🎉 새 업적 획득: [${bInfo.name}]!`);
+    }
+  }
+
+  function renderDashboard() {
+    $('dash-total-clears').textContent = stats.totalClears;
+    $('dash-max-combo').textContent = stats.maxCombo;
+    $('dash-matchedPairs' ? 'dash-matched-pairs' : 'dash-matched-pairs').textContent = stats.matchedPairs;
+    const mins = Math.floor(stats.totalPlayMs / 60000);
+    $('dash-total-time').textContent = `${mins}분`;
+
+    $('dash-best-easy').textContent = getBest('easy');
+    $('dash-best-normal').textContent = getBest('normal');
+    $('dash-best-hard').textContent = getBest('hard');
+
+    // 뱃지 렌더링
+    const badgeContainer = $('dash-badges');
+    badgeContainer.innerHTML = '';
+    BADGES.forEach(b => {
+      const isUnlocked = stats.unlockedBadges.includes(b.id);
+      const item = document.createElement('div');
+      item.className = `badge-item ${isUnlocked ? 'unlocked' : 'locked'}`;
+      item.innerHTML = `
+        <span class="badge-icon">${b.icon}</span>
+        <span class="badge-name">${b.name}</span>
+        <span class="badge-status">${isUnlocked ? '달성 완료 ✨' : '미달성'}</span>
+      `;
+      item.title = b.desc;
+      badgeContainer.appendChild(item);
+    });
+  }
+
+  $('btn-dash-back').addEventListener('click', () => {
+    switchScreen('home');
+  });
+  $('btn-dash-play').addEventListener('click', () => {
+    switchScreen('game');
+    newGame();
+  });
+
+  // ==========================================================
+  // 3. 인게임 세팅 & 타이머
+  // ==========================================================
   const themeSelect = $('select-theme');
   Object.entries(THEMES).forEach(([key, t]) => {
     const opt = document.createElement('option');
@@ -51,20 +259,6 @@
   updateSoundBtn();
   updateBgmBtn();
 
-  function saveSettings() {
-    localStorage.setItem('shisen-settings', JSON.stringify({
-      difficulty: state.difficulty,
-      theme: state.theme,
-      sound: Sound.enabled,
-      bgm: Sound.bgmEnabled,
-    }));
-  }
-
-  // ---------- 타이머 ----------
-  function fmt(ms) {
-    const s = Math.floor(ms / 1000);
-    return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-  }
   function startTimer() {
     stopTimer();
     state.startTime = Date.now() - state.elapsed;
@@ -75,10 +269,8 @@
   }
   function stopTimer() { clearInterval(state.timerId); state.timerId = null; }
 
-  function bestKey() { return `shisen-best-${state.difficulty}`; }
   function showBest() {
-    const best = Number(localStorage.getItem(bestKey()));
-    $('stat-best').textContent = best ? fmt(best) : '--:--';
+    $('stat-best').textContent = getBest(state.difficulty);
   }
 
   function updateStats() {
@@ -108,7 +300,9 @@
     el.classList.add('show');
   }
 
-  // ---------- 게임 흐름 ----------
+  // ==========================================================
+  // 게임 루프 및 판정
+  // ==========================================================
   function newGame() {
     const diff = DIFFICULTIES[state.difficulty];
     const rect = $('stage').getBoundingClientRect();
@@ -179,6 +373,12 @@
     renderer.removeTiles(cur, p, state.combo);
     Sound.match(state.combo);
     if (state.combo >= 2) showCombo(state.combo);
+
+    // 대시보드 통계 누적
+    stats.matchedPairs++;
+    if (state.combo > stats.maxCombo) stats.maxCombo = state.combo;
+    saveStats();
+
     updateStats();
 
     if (board.isCleared()) { finish(); return; }
@@ -199,10 +399,17 @@
     state.finished = true;
     stopTimer();
     updateStats();
-    const prev = Number(localStorage.getItem(bestKey()));
+
+    // 통계 기록 누적
+    stats.totalClears++;
+    stats.totalPlayMs += state.elapsed;
+    const prev = Number(localStorage.getItem(bestKey(state.difficulty)));
     const isBest = !prev || state.elapsed < prev;
-    if (isBest) localStorage.setItem(bestKey(), String(state.elapsed));
+    if (isBest) localStorage.setItem(bestKey(state.difficulty), String(state.elapsed));
+    saveStats();
+    checkBadges(state.elapsed);
     showBest();
+
     setTimeout(() => {
       Sound.clear();
       $('clear-emoji').textContent = isBest ? '🏆' : '🎉';
@@ -215,10 +422,9 @@
     }, 600);
   }
 
-  // ---------- 이벤트 (즉각 반응 + 스마트 근접 터치) ----------
+  // ---------- 스마트 터치 이벤트 ----------
   function handleBoardPointer(e) {
     if (state.finished) return;
-    // 터치 대상 판정: 직접 타일을 눌렀거나, 근처 빈 공간을 누른 경우 가장 가까운 타일 찾기
     let tile = e.target.closest('.tile');
     if (!tile) {
       const rect = $('board').getBoundingClientRect();
@@ -228,12 +434,10 @@
       const touchY = e.clientY - rect.top;
       const c = Math.floor(touchX / cellW);
       const r = Math.floor(touchY / cellH);
-      // 터치한 칸에 타일이 있으면 바로 선택
       if (r >= 0 && r < state.board.grid.length && c >= 0 && c < state.board.grid[0].length) {
         if (state.board.get(r, c) !== 0) {
           tile = renderer.tileEl({ r, c });
         } else {
-          // 주변 1칸 범위 내 가장 가까운 타일 검색 (터치 보정)
           let minDist = Infinity;
           let bestEl = null;
           for (let dr = -1; dr <= 1; dr++) {
@@ -263,16 +467,13 @@
     onTileClick({ r: Number(tile.dataset.r), c: Number(tile.dataset.c) });
   }
 
-  // pointerdown 지원 시 0ms 반응, 미지원 브라우저는 click 폴백
   if (window.PointerEvent) {
     let lastPointerTime = 0;
     $('board').addEventListener('pointerdown', e => {
-      // 마우스 우클릭 등 제외
       if (e.button && e.button !== 0) return;
       lastPointerTime = Date.now();
       handleBoardPointer(e);
     });
-    // pointerdown 후 중복 click 발생 방지
     $('board').addEventListener('click', e => {
       if (Date.now() - lastPointerTime < 500) {
         e.preventDefault();
@@ -283,6 +484,7 @@
     $('board').addEventListener('click', handleBoardPointer);
   }
 
+  // 하단 툴바 액션
   $('btn-hint').addEventListener('click', () => {
     if (state.finished) return;
     if (state.hintsLeft <= 0) {
@@ -315,6 +517,18 @@
 
   $('btn-new').addEventListener('click', newGame);
   $('btn-again').addEventListener('click', newGame);
+  $('btn-clear-dash').addEventListener('click', () => {
+    $('clear-modal').hidden = true;
+    switchScreen('dashboard');
+  });
+
+  // 상단 바 버튼들
+  $('btn-game-home').addEventListener('click', () => {
+    switchScreen('home');
+  });
+  $('btn-game-dash').addEventListener('click', () => {
+    switchScreen('dashboard');
+  });
 
   $('select-difficulty').addEventListener('change', e => {
     state.difficulty = e.target.value;
@@ -352,7 +566,7 @@
     saveSettings();
   });
 
-  // 사용자의 첫 인터랙션 시 오디오 컨텍스트 및 BGM 자동 잠금 해제 (모바일 사파리/크롬 대응)
+  // 브라우저 오디오 언락
   const unlockAudioOnce = () => {
     Sound.unlock();
     ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown'].forEach(evt => {
@@ -371,13 +585,13 @@
     else if (e.key === 'Escape') deselect();
   });
 
-  // 탭이 숨겨지면 타이머 및 BGM 일시정지
+  // 탭 숨김 처리
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       stopTimer();
       Sound.stopBgm();
     } else {
-      if (!state.finished) startTimer();
+      if (state.screen === 'game' && !state.finished) startTimer();
       if (Sound.bgmEnabled) Sound.startBgm();
     }
   });
@@ -385,8 +599,11 @@
   let resizeRaf = 0;
   window.addEventListener('resize', () => {
     cancelAnimationFrame(resizeRaf);
-    resizeRaf = requestAnimationFrame(() => renderer.fit());
+    resizeRaf = requestAnimationFrame(() => {
+      if (state.screen === 'game') renderer.fit();
+    });
   });
 
-  newGame();
+  // 최초 로드: 홈 화면으로 진입
+  switchScreen('home');
 })();

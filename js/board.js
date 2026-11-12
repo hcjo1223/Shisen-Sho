@@ -7,9 +7,9 @@
     : root.ShisenPathfinder;
 
   const DIFFICULTIES = {
-    easy:   { name: '쉬움',  rows: 6, cols: 8 },   // 48개 (기존 보통)
-    normal: { name: '보통',  rows: 8, cols: 10 },  // 80개 (기존 어려움)
-    hard:   { name: '어려움', rows: 8, cols: 14 },  // 112개 (신규 어려움)
+    easy:   { name: '쉬움',  rows: 6, cols: 8 },   // 48개 (비율 3:4)
+    normal: { name: '보통',  rows: 8, cols: 10 },  // 80개 (비율 4:5)
+    hard:   { name: '어려움', rows: 8, cols: 12 },  // 96개 (비율 2:3, 스마트폰 화면 비율에 딱 맞게 꽉 참)
   };
   const COPIES = 4; // 이모지 한 종류당 4장
 
