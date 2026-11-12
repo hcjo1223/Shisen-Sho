@@ -199,12 +199,73 @@
     }, 600);
   }
 
-  // ---------- 이벤트 ----------
-  $('board').addEventListener('click', e => {
-    const tile = e.target.closest('.tile');
+  // ---------- 이벤트 (즉각 반응 + 스마트 근접 터치) ----------
+  function handleBoardPointer(e) {
+    if (state.finished) return;
+    // 터치 대상 판정: 직접 타일을 눌렀거나, 근처 빈 공간을 누른 경우 가장 가까운 타일 찾기
+    let tile = e.target.closest('.tile');
+    if (!tile) {
+      const rect = $('board').getBoundingClientRect();
+      const cellW = rect.width / state.board.grid[0].length;
+      const cellH = rect.height / state.board.grid.length;
+      const touchX = e.clientX - rect.left;
+      const touchY = e.clientY - rect.top;
+      const c = Math.floor(touchX / cellW);
+      const r = Math.floor(touchY / cellH);
+      // 터치한 칸에 타일이 있으면 바로 선택
+      if (r >= 0 && r < state.board.grid.length && c >= 0 && c < state.board.grid[0].length) {
+        if (state.board.get(r, c) !== 0) {
+          tile = renderer.tileEl({ r, c });
+        } else {
+          // 주변 1칸 범위 내 가장 가까운 타일 검색 (터치 보정)
+          let minDist = Infinity;
+          let bestEl = null;
+          for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+              const nr = r + dr, nc = c + dc;
+              if (nr >= 0 && nr < state.board.grid.length && nc >= 0 && nc < state.board.grid[0].length) {
+                if (state.board.get(nr, nc) !== 0) {
+                  const el = renderer.tileEl({ r: nr, c: nc });
+                  if (el && !el.classList.contains('removing')) {
+                    const b = el.getBoundingClientRect();
+                    const d = Math.hypot(e.clientX - (b.left + b.width / 2), e.clientY - (b.top + b.height / 2));
+                    if (d < minDist && d <= Math.max(cellW, cellH) * 1.1) {
+                      minDist = d;
+                      bestEl = el;
+                    }
+                  }
+                }
+              }
+            }
+          }
+          tile = bestEl;
+        }
+      }
+    }
+
     if (!tile || tile.classList.contains('removing')) return;
     onTileClick({ r: Number(tile.dataset.r), c: Number(tile.dataset.c) });
-  });
+  }
+
+  // pointerdown 지원 시 0ms 반응, 미지원 브라우저는 click 폴백
+  if (window.PointerEvent) {
+    let lastPointerTime = 0;
+    $('board').addEventListener('pointerdown', e => {
+      // 마우스 우클릭 등 제외
+      if (e.button && e.button !== 0) return;
+      lastPointerTime = Date.now();
+      handleBoardPointer(e);
+    });
+    // pointerdown 후 중복 click 발생 방지
+    $('board').addEventListener('click', e => {
+      if (Date.now() - lastPointerTime < 500) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    });
+  } else {
+    $('board').addEventListener('click', handleBoardPointer);
+  }
 
   $('btn-hint').addEventListener('click', () => {
     if (state.finished) return;
