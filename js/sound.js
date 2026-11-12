@@ -1,9 +1,10 @@
 /**
- * sound.js — Web Audio API 기반 효과음 (외부 파일 없음)
+ * sound.js — Web Audio API 기반 효과음 및 8비트 칩튠(도트) BGM 합성기
  */
 (function (root) {
   let ctx = null;
-  let enabled = true;
+  let sfxEnabled = true;
+  let bgmEnabled = true;
 
   function ac() {
     if (!ctx) {
@@ -15,10 +16,10 @@
     return ctx;
   }
 
-  /** 마림바 느낌의 짧은 톤 */
+  /** 마림바/실로폰 느낌의 짧은 효과음 톤 */
   function tone(freq, start, dur, opts) {
     const a = ac();
-    if (!a || !enabled) return;
+    if (!a || !sfxEnabled) return;
     const o = opts || {};
     const t0 = a.currentTime + (start || 0);
     const osc = a.createOscillator();
@@ -33,7 +34,16 @@
     osc.stop(t0 + dur + 0.05);
   }
 
-  const NOTE = { C5: 523.25, D5: 587.33, E5: 659.25, G5: 783.99, A5: 880, C6: 1046.5, E6: 1318.5, G6: 1568 };
+  const NOTE = {
+    // 3옥타브 (베이스)
+    C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196.00, A3: 220.00, B3: 246.94,
+    // 4옥타브
+    C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.00, A4: 440.00, B4: 493.88,
+    // 5옥타브 (멜로디)
+    C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.00, B5: 987.77,
+    // 6옥타브
+    C6: 1046.5, D6: 1174.7, E6: 1318.5, G6: 1568.0,
+  };
   const SCALE = [NOTE.C5, NOTE.D5, NOTE.E5, NOTE.G5, NOTE.A5, NOTE.C6, NOTE.E6, NOTE.G6];
 
   function vibrate(ms) {
@@ -42,10 +52,127 @@
     }
   }
 
+  // =========================================================================
+  // 8비트 칩튠 (도트 감성) BGM 엔진
+  // 레트로 게임보이/패미컴 풍 사각파(square) 멜로디 + 삼각파(triangle) 아르페지오 베이스
+  // =========================================================================
+  const TEMPO = 118; // BPM
+  const STEP = 60 / TEMPO / 2; // 16분음표 길이 (~0.127초)
+
+  // 16비트 단위 멜로디 (C 메이저 경쾌한 테마, 0 = 쉼표)
+  const MELODY = [
+    NOTE.E5, 0, NOTE.G5, NOTE.C6,  NOTE.E6, 0, NOTE.D6, 0,
+    NOTE.C6, NOTE.A5, NOTE.G5, 0,  NOTE.E5, NOTE.G5, NOTE.A5, 0,
+
+    NOTE.F5, 0, NOTE.A5, NOTE.C6,  NOTE.D6, 0, NOTE.C6, 0,
+    NOTE.B5, NOTE.G5, NOTE.A5, NOTE.B5, NOTE.C6, 0, 0, 0,
+
+    NOTE.E5, NOTE.G5, NOTE.E5, NOTE.D5, NOTE.C5, 0, NOTE.E5, NOTE.G5,
+    NOTE.A5, NOTE.C6, NOTE.A5, NOTE.G5, NOTE.E5, 0, NOTE.G5, 0,
+
+    NOTE.D5, NOTE.E5, NOTE.F5, NOTE.A5, NOTE.G5, NOTE.E5, NOTE.D5, 0,
+    NOTE.C5, NOTE.E5, NOTE.G5, NOTE.D5, NOTE.C5, 0, 0, 0,
+  ];
+
+  // 8분음표 베이스라인 (루프당 32스텝, 각 2STEP 동안 유지)
+  const BASS = [
+    NOTE.C3, NOTE.G3, NOTE.C4, NOTE.G3,  NOTE.A3, NOTE.E3, NOTE.A3, NOTE.E3,
+    NOTE.F3, NOTE.C3, NOTE.F3, NOTE.C3,  NOTE.G3, NOTE.D3, NOTE.G3, NOTE.B3,
+    NOTE.C3, NOTE.G3, NOTE.C4, NOTE.G3,  NOTE.A3, NOTE.E3, NOTE.A3, NOTE.E3,
+    NOTE.F3, NOTE.A3, NOTE.G3, NOTE.B3,  NOTE.C3, NOTE.G3, NOTE.C4, NOTE.C3,
+  ];
+
+  let bgmMasterGain = null;
+  let bgmTimer = null;
+  let bgmNextTime = 0;
+  let bgmStep = 0;
+  let isPlayingBgm = false;
+
+  function initBgmNodes() {
+    const a = ac();
+    if (!a) return;
+    if (!bgmMasterGain) {
+      bgmMasterGain = a.createGain();
+      bgmMasterGain.gain.setValueAtTime(bgmEnabled ? 0.08 : 0.0001, a.currentTime);
+      bgmMasterGain.connect(a.destination);
+    }
+  }
+
+  function play8bitChirp(freq, time, dur, type, vol) {
+    const a = ac();
+    if (!a || !freq) return;
+    const osc = a.createOscillator();
+    const g = a.createGain();
+    osc.type = type || 'square';
+    osc.frequency.setValueAtTime(freq, time);
+    // 레트로 칩튠 특유의 톡 떨어지는 게인 엔벨로프
+    g.gain.setValueAtTime(vol || 0.12, time);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + dur * 0.95);
+    osc.connect(g).connect(bgmMasterGain);
+    osc.start(time);
+    osc.stop(time + dur);
+  }
+
+  function scheduleBgm() {
+    const a = ac();
+    if (!a || !isPlayingBgm) return;
+    // 0.25초 앞서서 오디오 버퍼 스케줄링
+    while (bgmNextTime < a.currentTime + 0.25) {
+      const melodyFreq = MELODY[bgmStep % MELODY.length];
+      if (melodyFreq) {
+        // 리드 채널: 8비트 사각파(square)
+        play8bitChirp(melodyFreq, bgmNextTime, STEP * 0.85, 'square', 0.11);
+      }
+      // 베이스 채널: 2스텝(8분음표)마다 삼각파(triangle)
+      if (bgmStep % 2 === 0) {
+        const bassIdx = Math.floor((bgmStep / 2) % BASS.length);
+        const bassFreq = BASS[bassIdx];
+        if (bassFreq) {
+          play8bitChirp(bassFreq, bgmNextTime, STEP * 1.7, 'triangle', 0.18);
+        }
+      }
+      bgmNextTime += STEP;
+      bgmStep++;
+    }
+    bgmTimer = setTimeout(scheduleBgm, 80);
+  }
+
+  function startBgm() {
+    const a = ac();
+    if (!a || isPlayingBgm) return;
+    initBgmNodes();
+    isPlayingBgm = true;
+    bgmNextTime = a.currentTime + 0.05;
+    bgmStep = 0;
+    scheduleBgm();
+  }
+
+  function stopBgm() {
+    isPlayingBgm = false;
+    clearTimeout(bgmTimer);
+    bgmTimer = null;
+  }
+
   const Sound = {
-    get enabled() { return enabled; },
-    set enabled(v) { enabled = !!v; },
-    unlock() { ac(); },
+    get enabled() { return sfxEnabled; },
+    set enabled(v) { sfxEnabled = !!v; },
+    get bgmEnabled() { return bgmEnabled; },
+    set bgmEnabled(v) {
+      bgmEnabled = !!v;
+      if (bgmMasterGain && ctx) {
+        bgmMasterGain.gain.setValueAtTime(bgmEnabled ? 0.08 : 0.0001, ctx.currentTime);
+      }
+      if (bgmEnabled && !isPlayingBgm) {
+        startBgm();
+      }
+    },
+    unlock() {
+      ac();
+      initBgmNodes();
+      if (bgmEnabled && !isPlayingBgm) startBgm();
+    },
+    startBgm,
+    stopBgm,
     select() {
       vibrate(12);
       tone(NOTE.A5, 0, 0.12, { type: 'triangle', vol: 0.12 });
@@ -79,4 +206,4 @@
   };
 
   root.ShisenSound = Sound;
-})(window);
+})(typeof window !== 'undefined' ? window : globalThis);

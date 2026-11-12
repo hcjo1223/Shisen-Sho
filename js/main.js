@@ -32,6 +32,7 @@
     finished: false,
   };
   Sound.enabled = saved.sound !== false;
+  Sound.bgmEnabled = saved.bgm !== false;
 
   // ---------- 초기 UI ----------
   const themeSelect = $('select-theme');
@@ -44,10 +45,14 @@
   themeSelect.value = state.theme;
   $('select-difficulty').value = state.difficulty;
   updateSoundBtn();
+  updateBgmBtn();
 
   function saveSettings() {
     localStorage.setItem('shisen-settings', JSON.stringify({
-      difficulty: state.difficulty, theme: state.theme, sound: Sound.enabled,
+      difficulty: state.difficulty,
+      theme: state.theme,
+      sound: Sound.enabled,
+      bgm: Sound.bgmEnabled,
     }));
   }
 
@@ -317,6 +322,11 @@
     $('btn-sound').textContent = Sound.enabled ? '🔊' : '🔇';
     $('btn-sound').setAttribute('aria-pressed', String(Sound.enabled));
   }
+  function updateBgmBtn() {
+    $('btn-bgm').textContent = Sound.bgmEnabled ? '🎵' : '🔇';
+    $('btn-bgm').setAttribute('aria-pressed', String(Sound.bgmEnabled));
+  }
+
   $('btn-sound').addEventListener('click', () => {
     Sound.enabled = !Sound.enabled;
     updateSoundBtn();
@@ -324,18 +334,40 @@
     if (Sound.enabled) Sound.select();
   });
 
+  $('btn-bgm').addEventListener('click', () => {
+    Sound.unlock();
+    Sound.bgmEnabled = !Sound.bgmEnabled;
+    updateBgmBtn();
+    saveSettings();
+  });
+
+  // 사용자의 첫 인터랙션 시 오디오 컨텍스트 및 BGM 자동 잠금 해제
+  const unlockAudioOnce = () => {
+    Sound.unlock();
+    document.removeEventListener('pointerdown', unlockAudioOnce);
+    document.removeEventListener('keydown', unlockAudioOnce);
+  };
+  document.addEventListener('pointerdown', unlockAudioOnce);
+  document.addEventListener('keydown', unlockAudioOnce);
+
   document.addEventListener('keydown', e => {
     if (e.target.tagName === 'SELECT') return;
     if (e.key === 'h' || e.key === 'H') $('btn-hint').click();
     else if (e.key === 's' || e.key === 'S') $('btn-shuffle').click();
     else if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey)) $('btn-undo').click();
+    else if (e.key === 'm' || e.key === 'M') $('btn-bgm').click();
     else if (e.key === 'Escape') deselect();
   });
 
-  // 탭이 숨겨지면 타이머 일시정지
+  // 탭이 숨겨지면 타이머 및 BGM 일시정지
   document.addEventListener('visibilitychange', () => {
-    if (state.finished) return;
-    if (document.hidden) stopTimer(); else startTimer();
+    if (document.hidden) {
+      stopTimer();
+      Sound.stopBgm();
+    } else {
+      if (!state.finished) startTimer();
+      if (Sound.bgmEnabled) Sound.startBgm();
+    }
   });
 
   let resizeRaf = 0;
