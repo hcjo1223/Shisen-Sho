@@ -83,7 +83,6 @@
 
   function updateStats() {
     $('stat-remaining').textContent = state.board.remaining();
-    $('btn-undo').disabled = state.board.history.length === 0 || state.finished;
     // 힌트 횟수 뱃지 및 버튼 상태
     $('badge-hint').textContent = state.hintsLeft;
     $('btn-hint').disabled = state.hintsLeft <= 0 || state.finished;
@@ -314,17 +313,6 @@
     updateStats();
   });
 
-  $('btn-undo').addEventListener('click', () => {
-    if (state.finished) return;
-    const last = state.board.undo();
-    if (!last) return;
-    deselect();
-    renderer.placeTile(last.a.r, last.a.c, last.value, 0);
-    renderer.placeTile(last.b.r, last.b.c, last.value, 60);
-    state.combo = 0;
-    updateStats();
-  });
-
   $('btn-new').addEventListener('click', newGame);
   $('btn-again').addEventListener('click', newGame);
 
@@ -379,7 +367,6 @@
     if (e.target.tagName === 'SELECT') return;
     if (e.key === 'h' || e.key === 'H') $('btn-hint').click();
     else if (e.key === 's' || e.key === 'S') $('btn-shuffle').click();
-    else if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey)) $('btn-undo').click();
     else if (e.key === 'm' || e.key === 'M') $('btn-bgm').click();
     else if (e.key === 'Escape') deselect();
   });
