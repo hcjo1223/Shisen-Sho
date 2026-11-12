@@ -80,13 +80,15 @@
     fit() {
       if (!this.gridRows) return;
       const rect = this.stageEl.getBoundingClientRect();
-      const pad = 0.24;
+      // 패딩 보드(바깥 1줄)를 감안해 모바일에서 무대 전체를 가득 채우도록 계산
+      const availableW = Math.max(rect.width - 4, 120);
+      const availableH = Math.max(rect.height - 4, 120);
       const cell = Math.floor(Math.min(
-        rect.width / (this.gridCols + pad),
-        rect.height / (this.gridRows + pad),
-        84
+        availableW / this.gridCols,
+        availableH / this.gridRows,
+        96
       ));
-      document.documentElement.style.setProperty('--cell', `${Math.max(cell, 18)}px`);
+      document.documentElement.style.setProperty('--cell', `${Math.max(cell, 24)}px`);
     }
 
     setSelected(p, on) {

@@ -21,7 +21,7 @@
   const saved = JSON.parse(localStorage.getItem('shisen-settings') || '{}');
   const state = {
     board: null,
-    difficulty: saved.difficulty || 'normal',
+    difficulty: saved.difficulty || 'easy',
     theme: saved.theme || 'fruit',
     selected: null,
     startTime: 0,

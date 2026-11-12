@@ -378,12 +378,50 @@ body {
 
 /* ---------- 반응형 ---------- */
 @media (max-width: 720px) {
-  .app { padding-left: 8px; padding-right: 8px; gap: 6px; }
-  .topbar { justify-content: center; }
-  .logo { width: 100%; justify-content: center; }
-  .stat { min-width: 54px; padding: 0 4px; }
-  .tool-btn { padding: 8px 14px; font-size: 0.95rem; }
-  .settings .select-wrap select { padding: 7px 26px 7px 12px; font-size: 0.85rem; }
+  .app {
+    padding: max(4px, env(safe-area-inset-top)) 4px max(6px, env(safe-area-inset-bottom));
+    gap: 4px;
+  }
+  .topbar {
+    gap: 4px 6px;
+    justify-content: space-between;
+  }
+  .logo {
+    font-size: 1.15rem;
+    width: auto;
+  }
+  .stats {
+    padding: 3px 6px;
+    gap: 2px;
+  }
+  .stat {
+    min-width: 48px;
+    padding: 0 4px;
+  }
+  .stat-label { font-size: 0.62rem; }
+  .stat-value { font-size: 0.95rem; }
+  .settings { gap: 4px; }
+  .settings .select-wrap select {
+    padding: 5px 22px 5px 10px;
+    font-size: 0.8rem;
+  }
+  .icon-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 0.95rem;
+  }
+  .board-frame {
+    padding: 2px;
+    border-radius: 14px;
+  }
+  .toolbar {
+    gap: 6px;
+  }
+  .tool-btn {
+    padding: 7px 12px;
+    font-size: 0.88rem;
+    min-height: 38px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
