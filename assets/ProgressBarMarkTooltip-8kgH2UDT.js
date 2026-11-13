@@ -1,1 +1,0 @@
-import{Tooltip as e}from"./Tooltip-CUtGeLON.js";import{R as t}from"./focusOutline.stylex-CCsetRxN.js";var n=t();function r({content:t,children:r}){return(0,n.jsx)(e,{content:t,placement:`above`,focusTrigger:`always`,children:r})}export{r as default};

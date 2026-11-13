@@ -76,9 +76,9 @@ export const DIFFICULTY_META: Record<
     key: 'hard',
     icon: '👑',
     name: '어려움',
-    desc: '96개 타일 (8×12 · 꽉 찬 집중)',
-    tiles: 96,
-    gridLabel: '8×12',
+    desc: '120개 타일 (10×12 · 꽉 찬 집중)',
+    tiles: 120,
+    gridLabel: '10×12',
   },
 };
 

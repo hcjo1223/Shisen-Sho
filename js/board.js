@@ -9,7 +9,7 @@
   const DIFFICULTIES = {
     easy:   { name: '쉬움',  rows: 6, cols: 8 },   // 48개 (비율 3:4)
     normal: { name: '보통',  rows: 8, cols: 10 },  // 80개 (비율 4:5)
-    hard:   { name: '어려움', rows: 8, cols: 12 },  // 96개 (비율 2:3, 스마트폰 화면 비율에 딱 맞게 꽉 참)
+    hard:   { name: '어려움', rows: 10, cols: 12 }, // 120개 (모바일 세로 10열×12행 / PC 10행×12열)
   };
   const COPIES = 4; // 이모지 한 종류당 4장
 
