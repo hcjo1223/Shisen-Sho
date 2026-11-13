@@ -215,5 +215,6 @@
     },
   };
 
-  root.ShisenSound = Sound;
+  if (typeof module !== 'undefined' && module.exports) module.exports = Sound;
+  else root.ShisenSound = Sound;
 })(typeof window !== 'undefined' ? window : globalThis);

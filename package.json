@@ -1,0 +1,39 @@
+{
+  "name": "malang-shisen-sho",
+  "version": "1.0.0",
+  "private": true,
+  "description": "말랑 사천성 — 귀여운 이모지 사천성 퍼즐 (Astryx Design System 적용)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node scripts/sync-root-build.mjs",
+    "preview": "vite preview",
+    "test": "node tests/pathfinder.test.js",
+    "astryx": "node node_modules/@astryxdesign/cli/clients/cli/bin/astryx.mjs"
+  },
+  "browserslist": [
+    "chrome >= 123",
+    "firefox >= 120",
+    "safari >= 17.5"
+  ],
+  "dependencies": {
+    "@astryxdesign/core": "^0.7.15",
+    "@astryxdesign/theme-butter": "^0.7.15",
+    "@astryxdesign/theme-matcha": "^0.7.15",
+    "@astryxdesign/theme-neutral": "^0.7.15",
+    "@astryxdesign/theme-y2k": "^0.7.15",
+    "@stylexjs/stylex": "^0.19.1",
+    "lucide-react": "^1.66.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@astryxdesign/build": "^0.7.15",
+    "@astryxdesign/cli": "^0.7.15",
+    "@stylexjs/unplugin": "^0.19.1",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "typescript": "^6.0.0",
+    "vite": "^8.0.0"
+  }
+}

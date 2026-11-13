@@ -1,0 +1,53 @@
+{
+  "recipe": "astryx-oklch-v1",
+  "vibrancy": 52,
+  "neutralProfile": "custom",
+  "modeStrategy": "light-and-dark",
+  "stops": [
+    0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90,
+    95, 100
+  ],
+  "families": [
+    {
+      "id": "neutral",
+      "name": "Malang Cocoa Cream",
+      "seed": "#8a7470",
+      "kind": "neutral",
+      "anchors": [
+        { "mode": "light", "stop": 15, "color": "#4a3b39", "policy": "exact" },
+        { "mode": "light", "stop": 45, "color": "#7c6561", "policy": "exact" },
+        { "mode": "light", "stop": 75, "color": "#e5ccc2", "policy": "exact" },
+        { "mode": "light", "stop": 85, "color": "#f0d9cf", "policy": "exact" },
+        { "mode": "light", "stop": 90, "color": "#ffe9e1", "policy": "exact" },
+        { "mode": "light", "stop": 95, "color": "#fff4ef", "policy": "exact" },
+        { "mode": "dark", "stop": 5, "color": "#1a1312", "policy": "exact" },
+        { "mode": "dark", "stop": 10, "color": "#231917", "policy": "exact" },
+        { "mode": "dark", "stop": 15, "color": "#2d211e", "policy": "exact" },
+        { "mode": "dark", "stop": 20, "color": "#382926", "policy": "exact" },
+        { "mode": "dark", "stop": 35, "color": "#55413d", "policy": "exact" },
+        { "mode": "dark", "stop": 70, "color": "#cfb9b3", "policy": "exact" },
+        { "mode": "dark", "stop": 90, "color": "#f8ede9", "policy": "exact" },
+        { "mode": "dark", "stop": 95, "color": "#fff6f3", "policy": "exact" }
+      ]
+    },
+    {
+      "id": "accent",
+      "name": "Malang Coral",
+      "seed": "#d64538",
+      "anchors": [
+        { "mode": "light", "stop": 40, "color": "#d13f32", "policy": "exact" },
+        { "mode": "light", "stop": 90, "color": "#ffe6e1", "policy": "exact" },
+        { "mode": "dark", "stop": 85, "color": "#ff9e90", "policy": "exact" }
+      ]
+    },
+    { "id": "blue", "name": "Sky Blue", "seed": "#4d8be6", "anchors": [] },
+    { "id": "cyan", "name": "Ice Mint", "seed": "#3bb7c9", "anchors": [] },
+    { "id": "green", "name": "Soft Mint", "seed": "#37a879", "anchors": [] },
+    { "id": "orange", "name": "Peach", "seed": "#f08543", "anchors": [] },
+    { "id": "pink", "name": "Berry Pink", "seed": "#e5619d", "anchors": [] },
+    { "id": "purple", "name": "Lavender", "seed": "#956be8", "anchors": [] },
+    { "id": "red", "name": "Strawberry Red", "seed": "#e04848", "anchors": [] },
+    { "id": "teal", "name": "Pistachio Teal", "seed": "#3ba896", "anchors": [] },
+    { "id": "yellow", "name": "Butter Yellow", "seed": "#ebb426", "anchors": [] }
+  ]
+}

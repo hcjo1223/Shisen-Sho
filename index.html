@@ -1,226 +1,31 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-  <title>말랑 사천성 — 귀여운 이모지 사천성 퍼즐</title>
-  <meta name="description" content="과일과 동물 이모지로 즐기는 힐링 사천성 퍼즐. 같은 그림 두 개를 두 번 이하로 꺾인 선으로 이어 모두 없애 보세요.">
-  <meta name="theme-color" content="#fff4ef">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20261112b">
-</head>
-<body>
-  <!-- ==================== 1. 홈 화면 (시작 로비) ==================== -->
-  <section class="screen" id="screen-home" aria-label="홈 화면">
-    <div class="home-container">
-      <div class="home-hero">
-        <div class="home-emojis" aria-hidden="true">
-          <span class="float-emoji e1">🍎</span>
-          <span class="float-emoji e2">🐶</span>
-          <span class="float-emoji e3">🍰</span>
-          <span class="float-emoji e4">🍓</span>
-          <span class="float-emoji e5">🐰</span>
-        </div>
-        <h1 class="home-title"><span class="title-sub">폭신폭신 힐링 퍼즐</span>말랑 사천성</h1>
-        <p class="home-desc">같은 그림 두 개를 꺾임 2번 이하로 이어보세요 ✨</p>
-      </div>
+  <head>
+    <style>@layer reset, astryx-base, astryx-theme, product;</style>
 
-      <!-- 난이도 선택 카드 -->
-      <div class="home-section">
-        <h2 class="section-title">난이도 선택</h2>
-        <div class="diff-grid" role="radiogroup" aria-label="난이도">
-          <button class="diff-card active" type="button" data-diff="easy" role="radio" aria-checked="true">
-            <span class="diff-icon">🌱</span>
-            <div class="diff-info">
-              <span class="diff-name">쉬움</span>
-              <span class="diff-desc">48개 타일 (가볍게 힐링)</span>
-            </div>
-            <span class="diff-badge" id="home-best-easy">최고 --:--</span>
-          </button>
-          <button class="diff-card" type="button" data-diff="normal" role="radio" aria-checked="false">
-            <span class="diff-icon">🌸</span>
-            <div class="diff-info">
-              <span class="diff-name">보통</span>
-              <span class="diff-desc">80개 타일 (적당한 몰입)</span>
-            </div>
-            <span class="diff-badge" id="home-best-normal">최고 --:--</span>
-          </button>
-          <button class="diff-card" type="button" data-diff="hard" role="radio" aria-checked="false">
-            <span class="diff-icon">👑</span>
-            <div class="diff-info">
-              <span class="diff-name">어려움</span>
-              <span class="diff-desc">96개 타일 (꽉 찬 집중)</span>
-            </div>
-            <span class="diff-badge" id="home-best-hard">최고 --:--</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- 테마 선택 -->
-      <div class="home-section">
-        <h2 class="section-title">타일 테마</h2>
-        <div class="theme-chips" id="home-theme-chips" role="radiogroup" aria-label="타일 테마"></div>
-      </div>
-
-      <!-- 메인 액션 버튼 -->
-      <div class="home-actions">
-        <button class="btn-primary-large" id="btn-start-game" type="button">
-          <span class="btn-icon">🎮</span>
-          <span>게임 시작</span>
-        </button>
-        <button class="btn-sub-large" id="btn-open-dashboard" type="button">
-          <span class="btn-icon">📊</span>
-          <span>대시보드 (내 기록)</span>
-        </button>
-      </div>
-
-      <div class="home-audio-toggles">
-        <button class="icon-toggle" id="home-btn-bgm" type="button" aria-label="배경음악 토글">🎵 BGM 켜짐</button>
-        <button class="icon-toggle" id="home-btn-sound" type="button" aria-label="효과음 토글">🔊 효과음 켜짐</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- ==================== 2. 대시보드 화면 (통계 / 기록) ==================== -->
-  <section class="screen" id="screen-dashboard" aria-label="대시보드 화면" hidden>
-    <div class="dash-container">
-      <header class="dash-header">
-        <button class="back-btn" id="btn-dash-back" type="button" aria-label="뒤로가기">←</button>
-        <h1 class="dash-title">📊 플레이 대시보드</h1>
-        <div class="header-placeholder"></div>
-      </header>
-
-      <!-- 요약 통계 카드 그리드 -->
-      <div class="dash-stats-grid">
-        <div class="dash-card">
-          <span class="dash-card-icon">🏆</span>
-          <span class="dash-card-num" id="dash-total-clears">0</span>
-          <span class="dash-card-label">총 클리어</span>
-        </div>
-        <div class="dash-card">
-          <span class="dash-card-icon">⚡</span>
-          <span class="dash-card-num" id="dash-max-combo">0</span>
-          <span class="dash-card-label">최대 콤보</span>
-        </div>
-        <div class="dash-card">
-          <span class="dash-card-icon">🧩</span>
-          <span class="dash-card-num" id="dash-matched-pairs">0</span>
-          <span class="dash-card-label">맞춘 타일 쌍</span>
-        </div>
-        <div class="dash-card">
-          <span class="dash-card-icon">⏳</span>
-          <span class="dash-card-num" id="dash-total-time">0분</span>
-          <span class="dash-card-label">총 플레이 시간</span>
-        </div>
-      </div>
-
-      <!-- 난이도별 최고 기록 섹션 -->
-      <div class="dash-section">
-        <h2 class="section-title">난이도별 최고 기록</h2>
-        <div class="record-list">
-          <div class="record-row">
-            <div class="record-label"><span class="diff-icon">🌱</span><span>쉬움 (48개)</span></div>
-            <div class="record-value" id="dash-best-easy">--:--</div>
-          </div>
-          <div class="record-row">
-            <div class="record-label"><span class="diff-icon">🌸</span><span>보통 (80개)</span></div>
-            <div class="record-value" id="dash-best-normal">--:--</div>
-          </div>
-          <div class="record-row">
-            <div class="record-label"><span class="diff-icon">👑</span><span>어려움 (96개)</span></div>
-            <div class="record-value" id="dash-best-hard">--:--</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 업적/뱃지 섹션 -->
-      <div class="dash-section">
-        <h2 class="section-title">내 업적 뱃지</h2>
-        <div class="badge-grid" id="dash-badges"></div>
-      </div>
-
-      <div class="dash-actions">
-        <button class="btn-primary-large" id="btn-dash-play" type="button">
-          <span class="btn-icon">✨</span>
-          <span>지금 플레이하기</span>
-        </button>
-      </div>
-    </div>
-  </section>
-
-  <!-- ==================== 3. 인게임 화면 ==================== -->
-  <section class="screen" id="screen-game" aria-label="게임 플레이 화면" hidden>
-    <div class="app">
-      <header class="topbar">
-        <div class="topbar-left">
-          <button class="icon-btn" id="btn-game-home" type="button" aria-label="홈으로 가기" title="홈 화면">🏠</button>
-          <h1 class="logo"><span class="logo-emoji" aria-hidden="true">🍓</span>말랑 사천성</h1>
-        </div>
-
-        <div class="stats" aria-live="polite">
-          <div class="stat"><span class="stat-label">남은 타일</span><span class="stat-value" id="stat-remaining">0</span></div>
-          <div class="stat"><span class="stat-label">시간</span><span class="stat-value" id="stat-time">00:00</span></div>
-          <div class="stat"><span class="stat-label">최고 기록</span><span class="stat-value" id="stat-best">--:--</span></div>
-        </div>
-
-        <div class="settings">
-          <label class="select-wrap" for="select-difficulty">
-            <span class="sr-only">난이도</span>
-            <select id="select-difficulty">
-              <option value="easy">🌱 쉬움 (48개)</option>
-              <option value="normal">🌸 보통 (80개)</option>
-              <option value="hard">👑 어려움 (96개)</option>
-            </select>
-          </label>
-          <label class="select-wrap" for="select-theme">
-            <span class="sr-only">테마</span>
-            <select id="select-theme"></select>
-          </label>
-          <button class="icon-btn" id="btn-bgm" type="button" aria-label="배경음악 켜기/끄기" aria-pressed="false" title="배경음악">🎵</button>
-          <button class="icon-btn" id="btn-sound" type="button" aria-label="효과음 켜기/끄기" aria-pressed="true" title="효과음">🔊</button>
-          <button class="icon-btn" id="btn-game-dash" type="button" aria-label="대시보드 보기" title="대시보드">📊</button>
-        </div>
-      </header>
-
-      <main class="stage" id="stage">
-        <div class="board-frame" id="board-frame">
-          <div class="board" id="board" role="grid" aria-label="사천성 보드"></div>
-          <svg class="path-layer" id="path-layer" aria-hidden="true"></svg>
-          <div class="fx-layer" id="fx-layer" aria-hidden="true"></div>
-        </div>
-        <div class="combo" id="combo" aria-live="polite"></div>
-      </main>
-
-      <nav class="toolbar" aria-label="게임 도구">
-        <button class="tool-btn" id="btn-hint" type="button"><span class="tool-icon">💡</span><span>힌트</span><span class="btn-badge" id="badge-hint">5</span></button>
-        <button class="tool-btn" id="btn-shuffle" type="button"><span class="tool-icon">🔀</span><span>섞기</span><span class="btn-badge" id="badge-shuffle">1</span></button>
-        <button class="tool-btn primary" id="btn-new" type="button"><span class="tool-icon">✨</span><span>새 게임</span></button>
-      </nav>
-    </div>
-  </section>
-
-  <div class="toast" id="toast" role="status" aria-live="polite"></div>
-
-  <!-- 클리어 모달 -->
-  <div class="modal-backdrop" id="clear-modal" hidden>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="clear-title">
-      <div class="modal-emoji" id="clear-emoji">🎉</div>
-      <h2 id="clear-title">모두 맞췄어요!</h2>
-      <p class="modal-text" id="clear-text"></p>
-      <div class="modal-actions">
-        <button class="tool-btn" id="btn-clear-dash" type="button"><span class="tool-icon">📊</span><span>기록 보기</span></button>
-        <button class="tool-btn primary" id="btn-again" type="button"><span class="tool-icon">✨</span><span>한 판 더</span></button>
-      </div>
-    </div>
-  </div>
-
-  <script src="js/themes.js?v=20261112b"></script>
-  <script src="js/pathfinder.js?v=20261112b"></script>
-  <script src="js/board.js?v=20261112b"></script>
-  <script src="js/sound.js?v=20261112b"></script>
-  <script src="js/renderer.js?v=20261112b"></script>
-  <script src="js/main.js?v=20261112b"></script>
-</body>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>말랑 사천성 — 귀여운 이모지 사천성 퍼즐</title>
+    <meta
+      name="description"
+      content="과일과 동물 이모지로 즐기는 힐링 사천성 퍼즐. 같은 그림 두 개를 두 번 이하로 꺾인 선으로 이어 모두 없애 보세요."
+    />
+    <meta name="theme-color" content="#fff4ef" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap"
+      rel="stylesheet"
+    />
+    <script type="module" crossorigin src="./assets/index-B1u6XM1x.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/focusOutline.stylex-CCsetRxN.js">
+    <link rel="stylesheet" crossorigin href="./assets/index-BvIuruCa.css">
+    <link rel="stylesheet" crossorigin href="./assets/astryx-stylex-ce50a411.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
 </html>
