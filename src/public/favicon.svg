@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffe9e1" />
+      <stop offset="100%" stop-color="#fff4ef" />
+    </linearGradient>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#fff1eb" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#bg)" />
+  <path
+    d="M19 20 V14 Q19 10 23 10 H41 Q45 10 45 14 V20"
+    fill="none"
+    stroke="#d64538"
+    stroke-width="3.2"
+    stroke-linecap="round"
+    stroke-dasharray="4.5 4.2"
+  />
+  <path
+    d="M19 44 V50 Q19 54 23 54 H41 Q45 54 45 50 V44"
+    fill="none"
+    stroke="#d64538"
+    stroke-width="3.2"
+    stroke-linecap="round"
+    stroke-dasharray="4.5 4.2"
+  />
+  <g transform="translate(8 19) rotate(-6 11 13)">
+    <rect x="0" y="0" width="22" height="24" rx="6" fill="#4a3b39" />
+    <rect x="1.8" y="1.8" width="18.4" height="20.4" rx="4.5" fill="url(#tile)" />
+    <path d="M11 8.5 C7.5 8.5 6.2 11.2 7.2 14.5 C8.1 17.3 10 19 11 19 C12 19 13.9 17.3 14.8 14.5 C15.8 11.2 14.5 8.5 11 8.5 Z" fill="#e04848" />
+    <path d="M7.8 8.7 Q11 6.2 14.2 8.7 Q11 10.2 7.8 8.7 Z" fill="#37a879" />
+    <circle cx="9.2" cy="11.8" r="0.55" fill="#ffe9e1" />
+    <circle cx="12.8" cy="11.8" r="0.55" fill="#ffe9e1" />
+    <circle cx="11" cy="13.5" r="0.55" fill="#ffe9e1" />
+    <circle cx="9.6" cy="15.3" r="0.55" fill="#ffe9e1" />
+    <circle cx="12.4" cy="15.3" r="0.55" fill="#ffe9e1" />
+  </g>
+  <g transform="translate(34 21) rotate(6 11 12)">
+    <rect x="0" y="0" width="22" height="24" rx="6" fill="#4a3b39" />
+    <rect x="1.8" y="1.8" width="18.4" height="20.4" rx="4.5" fill="url(#tile)" />
+    <path d="M11 8.5 C7.5 8.5 6.2 11.2 7.2 14.5 C8.1 17.3 10 19 11 19 C12 19 13.9 17.3 14.8 14.5 C15.8 11.2 14.5 8.5 11 8.5 Z" fill="#e04848" />
+    <path d="M7.8 8.7 Q11 6.2 14.2 8.7 Q11 10.2 7.8 8.7 Z" fill="#37a879" />
+    <circle cx="9.2" cy="11.8" r="0.55" fill="#ffe9e1" />
+    <circle cx="12.8" cy="11.8" r="0.55" fill="#ffe9e1" />
+    <circle cx="11" cy="13.5" r="0.55" fill="#ffe9e1" />
+    <circle cx="9.6" cy="15.3" r="0.55" fill="#ffe9e1" />
+    <circle cx="12.4" cy="15.3" r="0.55" fill="#ffe9e1" />
+  </g>
+</svg>

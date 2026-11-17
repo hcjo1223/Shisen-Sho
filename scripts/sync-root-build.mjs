@@ -30,3 +30,25 @@ if (fs.existsSync(distAssets)) {
     fs.copyFileSync(path.join(distAssets, entry), path.join(rootAssets, entry));
   }
 }
+
+const publicFiles = [
+  'favicon.svg',
+  'favicon-32x32.png',
+  'apple-touch-icon.png',
+  'manifest.webmanifest',
+];
+for (const file of publicFiles) {
+  const srcFile = path.join(distDir, file);
+  if (fs.existsSync(srcFile)) {
+    fs.copyFileSync(srcFile, path.join(rootDir, file));
+  }
+}
+
+const distIcons = path.join(distDir, 'icons');
+const rootIcons = path.join(rootDir, 'icons');
+if (fs.existsSync(distIcons)) {
+  fs.mkdirSync(rootIcons, {recursive: true});
+  for (const entry of fs.readdirSync(distIcons)) {
+    fs.copyFileSync(path.join(distIcons, entry), path.join(rootIcons, entry));
+  }
+}
