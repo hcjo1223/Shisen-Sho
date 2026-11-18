@@ -70,6 +70,14 @@ const BOARD_CSS = `
     touch-action: none;
     transform: translateY(calc(var(--shisen-cell) * -0.03));
     transition: transform 0.12s cubic-bezier(.3, 1.6, .5, 1), box-shadow 0.12s ease, filter 0.15s ease;
+  }
+
+  /*
+   * 등장 애니메이션은 판을 처음 깔 때만 재생한다.
+   * (기본 .shisen-tile에 두면 selected·hint·falling 등 다른 클래스를 뗄 때마다
+   *  등장 애니메이션이 다시 재생되어 타일이 깜빡였다)
+   */
+  .shisen-tile.entering {
     animation: shisen-tile-in 0.4s cubic-bezier(.3, 1.5, .5, 1) backwards;
     animation-delay: var(--shisen-delay, 0ms);
   }
@@ -116,9 +124,14 @@ const BOARD_CSS = `
     animation: shisen-pop-out 0.34s ease-in forwards;
   }
 
+  /*
+   * 중력 낙하: 위치(translateY)만 움직인다.
+   * 크기 변형(눌림·반동)이나 will-change 해제는 끝나는 순간 이모지를 다시 그리며
+   * 깜빡임처럼 보이므로 쓰지 않는다.
+   */
   .shisen-tile.falling {
-    animation: shisen-fall var(--shisen-fall-ms, 260ms) cubic-bezier(.45, 0, .7, 1.25) both;
-    animation-delay: 110ms;
+    animation: shisen-fall var(--shisen-fall-ms, 320ms) cubic-bezier(.45, 0, .2, 1) both;
+    animation-delay: var(--shisen-fall-delay, 120ms);
   }
 
   /* 일시정지: 보드를 흐리게 페이드해 가리고 안내 문구를 띄운다 */
@@ -276,9 +289,10 @@ const BOARD_CSS = `
     }
   }
 
+  /* 부드러운 낙하: 천천히 출발해 가속한 뒤, 바닥 근처에서 감속하며 반동 없이 내려앉는다 */
   @keyframes shisen-fall {
     from {
-      transform: translateY(calc(var(--shisen-cell) * var(--shisen-fall-cells, 1) * -1));
+      transform: translateY(calc(var(--shisen-cell) * (var(--shisen-fall-cells, 1) * -1 - 0.03)));
     }
     to {
       transform: translateY(calc(var(--shisen-cell) * -0.03));
@@ -328,7 +342,7 @@ const BOARD_CSS = `
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .shisen-tile,
+    .shisen-tile.entering,
     .shisen-tile.selected,
     .shisen-tile.hint,
     .shisen-tile.shake,
@@ -361,6 +375,16 @@ function cellIndexAt(u: number, n: number): number {
   if (u < 0.5) return 0;
   if (u >= n - 1.5) return n - 1;
   return Math.floor(u - 0.5) + 1;
+}
+
+/** 지정한 애니메이션이 끝났을 때만 콜백 (다른 애니메이션 종료에 반응하지 않도록) */
+function onAnimationEnd(el: Element, name: string, cb: () => void): void {
+  const handler = (e: Event) => {
+    if ((e as AnimationEvent).animationName !== name || e.target !== el) return;
+    el.removeEventListener('animationend', handler);
+    cb();
+  };
+  el.addEventListener('animationend', handler);
 }
 
 function ensureBoardStyles(): void {
@@ -486,7 +510,7 @@ export class BoardController {
     cell.innerHTML = '';
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'shisen-tile';
+    btn.className = 'shisen-tile entering';
     btn.id = `tile-${r}-${c}`;
     btn.dataset.r = String(r);
     btn.dataset.c = String(c);
@@ -495,6 +519,7 @@ export class BoardController {
     btn.setAttribute('aria-label', `${glyph} 타일`);
     btn.style.setProperty('--shisen-tint', this.tint(v));
     btn.style.setProperty('--shisen-delay', `${delay || 0}ms`);
+    onAnimationEnd(btn, 'shisen-tile-in', () => btn.classList.remove('entering'));
     cell.appendChild(btn);
     return btn;
   }
@@ -571,9 +596,7 @@ export class BoardController {
     el.classList.remove('shake');
     void el.offsetWidth;
     el.classList.add('shake');
-    el.addEventListener('animationend', () => el.classList.remove('shake'), {
-      once: true,
-    });
+    onAnimationEnd(el, 'shisen-shake', () => el.classList.remove('shake'));
   }
 
   hint(pair: {a: Coord; b: Coord}): void {
@@ -582,9 +605,7 @@ export class BoardController {
       const el = this.tileEl(p);
       if (!el) return;
       el.classList.add('hint');
-      el.addEventListener('animationend', () => el.classList.remove('hint'), {
-        once: true,
-      });
+      onAnimationEnd(el, 'shisen-wiggle', () => el.classList.remove('hint'));
     });
   }
 
@@ -628,7 +649,7 @@ export class BoardController {
       if (!el) return;
       el.classList.remove('selected', 'hint');
       el.classList.add('removing');
-      el.addEventListener('animationend', () => el.remove(), {once: true});
+      onAnimationEnd(el, 'shisen-pop-out', () => el.remove());
       this.burst(p, intensity);
     });
   }
@@ -676,9 +697,7 @@ export class BoardController {
           btn.style.setProperty('--shisen-tint', this.tint(v));
         }, 250 + (r + c) * 12);
         this.refreshTimers.push(timer);
-        btn.addEventListener('animationend', () => btn.classList.remove('flip'), {
-          once: true,
-        });
+        onAnimationEnd(btn, 'shisen-flip', () => btn.classList.remove('flip'));
       }
     }
   }
@@ -707,23 +726,26 @@ export class BoardController {
   moveTiles(moves: Array<{from: Coord; to: Coord}>): void {
     // 같은 열 안에서는 아래쪽 이동부터 처리되도록 정렬 (목적지 칸이 비어 있도록)
     const ordered = [...moves].sort((x, y) => y.to.r - x.to.r);
+    // 열마다 아래 타일부터 조금씩 늦게 떨어뜨려 차르르 내려앉는 느낌을 준다
+    const rankInColumn = new Map<number, number>();
     for (const {from, to} of ordered) {
       const el = this.tileEl(from);
       const target = this.cells[to.r]?.[to.c];
       if (!el || !target) continue;
-      el.classList.remove('selected', 'hint', 'shake', 'flip', 'falling');
+      el.classList.remove('entering', 'selected', 'hint', 'shake', 'flip', 'falling');
       el.id = `tile-${to.r}-${to.c}`;
       el.dataset.r = String(to.r);
       el.dataset.c = String(to.c);
       const cells = to.r - from.r;
+      const rank = rankInColumn.get(to.c) ?? 0;
+      rankInColumn.set(to.c, rank + 1);
       el.style.setProperty('--shisen-fall-cells', String(cells));
-      el.style.setProperty('--shisen-fall-ms', `${Math.round(170 + 55 * Math.sqrt(cells))}ms`);
-      target.appendChild(el);
-      void el.offsetWidth;
+      el.style.setProperty('--shisen-fall-ms', `${Math.round(240 + 90 * Math.sqrt(cells))}ms`);
+      el.style.setProperty('--shisen-fall-delay', `${120 + rank * 35}ms`);
+      // 클래스를 먼저 붙인 뒤 옮겨, 새 칸에 놓이는 첫 프레임부터 낙하 시작 위치에 있게 한다
       el.classList.add('falling');
-      el.addEventListener('animationend', () => el.classList.remove('falling'), {
-        once: true,
-      });
+      target.appendChild(el);
+      onAnimationEnd(el, 'shisen-fall', () => el.classList.remove('falling'));
     }
   }
 
