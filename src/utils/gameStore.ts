@@ -8,6 +8,8 @@ import {
 } from '../../js/themes.js';
 import RawSound from '../../js/sound.js';
 import type {ThemeSlug} from '../astryx-themes';
+import pokemonSpriteUrl from '../assets/pokemon-gen1-sheet.png';
+import pokemonThumbUrl from '../assets/pokemon-pikachu-icon.png';
 import {todayKey} from './daily';
 import type {
   BoardConstructor,
@@ -36,9 +38,15 @@ export const TINTS = RawTINTS as string[];
 export const Sound = RawSound as unknown as SoundEngine;
 
 export type DifficultyKey = 'easy' | 'normal' | 'hard';
-export type TileThemeKey = 'fruit' | 'animal' | 'dessert' | 'mix';
+export type TileThemeKey = 'fruit' | 'animal' | 'dessert' | 'mix' | 'pokemon';
 export type ColorModeKey = 'system' | 'light' | 'dark';
 export type ScreenName = 'home' | 'dashboard' | 'game';
+
+export const TILE_SPRITE_URLS: Partial<Record<TileThemeKey, string>> = {
+  pokemon: pokemonSpriteUrl,
+};
+
+export const POKEMON_THUMB_URL = pokemonThumbUrl;
 /** 게임 화면 진입 방식: 새 판 / 저장된 판 이어하기 / 오늘의 챌린지 */
 export type GameEntry = 'new' | 'resume' | 'daily';
 export type GameMode = 'classic' | 'daily';
@@ -95,6 +103,7 @@ export const TILE_THEME_ORDER: readonly TileThemeKey[] = [
   'animal',
   'dessert',
   'mix',
+  'pokemon',
 ];
 
 export const UI_THEME_OPTIONS: Array<{
@@ -212,7 +221,8 @@ export function loadSettings(): GameSettings {
       raw.theme === 'fruit' ||
       raw.theme === 'animal' ||
       raw.theme === 'dessert' ||
-      raw.theme === 'mix'
+      raw.theme === 'mix' ||
+      raw.theme === 'pokemon'
         ? raw.theme
         : DEFAULT_SETTINGS.theme;
     const uiTheme =

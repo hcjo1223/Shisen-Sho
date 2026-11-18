@@ -2324,6 +2324,10 @@
       aspect-ratio: var(--button-icon-only-aspect);
     }
 
+    .astryx10y9f9r {
+      aspect-ratio: var(--x-aspectRatio);
+    }
+
     .astryxlp1x4z {
       backface-visibility: hidden;
     }
@@ -4266,6 +4270,14 @@
       cursor: default;
     }
 
+    .astryx16lv2iq:not([stylex-hack]) > :is(img, video) {
+      object-fit: contain;
+    }
+
+    .astryx492jj3:not([stylex-hack]) > :is(img, video) {
+      object-fit: cover;
+    }
+
     .astryxofkqq2:popover-open {
       opacity: 1;
     }
@@ -5889,7 +5901,7 @@
       width: var(--x-width);
     }
 
-    .astryx1y436bp.astryx1y436bp:where(.astryx-input-group > [data-astryx-input-group-item]) {
+    .astryx1m6kvgq:not([stylex-hack]) > *, .astryx1y436bp.astryx1y436bp:where(.astryx-input-group > [data-astryx-input-group-item]) {
       height: 100%;
     }
 
@@ -5899,6 +5911,10 @@
 
     .astryx1kw28su:focus-within {
       padding-top: var(--spacing-1);
+    }
+
+    .astryxyz6fim:not([stylex-hack]) > * {
+      width: 100%;
     }
 
     .astryx10okhzq:focus-within {
@@ -6897,6 +6913,11 @@
   }
 
   @property --x-4drmnv {
+    syntax: "*";
+    inherits: false
+  }
+
+  @property --x-aspectRatio {
     syntax: "*";
     inherits: false
   }

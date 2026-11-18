@@ -52,6 +52,7 @@ import {
   MAX_SHUFFLES,
   Sound,
   THEMES,
+  TILE_SPRITE_URLS,
   TILE_THEME_ORDER,
   UI_THEME_OPTIONS,
   clearSavedGame,
@@ -480,7 +481,9 @@ export function GameScreen({
           finishedMode === 'daily'
             ? `🗓️ 오늘의 챌린지 ${formatDailyShort(dailyKey)}`
             : `${meta.icon} ${meta.name}${gravityRef.current ? ' · 중력' : ''} 난이도`;
-        const themeTiles = THEMES[settingsRef.current.theme].tiles;
+        const activeThemeKey = settingsRef.current.theme;
+        const activeTheme = THEMES[activeThemeKey];
+        const spriteUrl = TILE_SPRITE_URLS[activeThemeKey];
         setClearInfo({
           isBest,
           elapsedMs: finalElapsed,
@@ -493,7 +496,13 @@ export function GameScreen({
             hintsUsed,
             maxCombo: gameMaxComboRef.current,
             streak,
-            emojis: themeTiles.slice(0, 7),
+            emojis:
+              activeTheme.kind === 'sprite'
+                ? ['⚡', '🔥', '💧', '🌿', '✨', '⭐', '🏆']
+                : activeTheme.tiles.slice(0, 7),
+            spriteUrl,
+            spriteCols: activeTheme.spriteCols,
+            spriteRows: activeTheme.spriteRows,
           },
         });
       }, 600);

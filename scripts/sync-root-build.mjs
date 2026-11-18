@@ -16,7 +16,7 @@ if (!fs.existsSync(distIndex)) {
 
 if (fs.existsSync(rootAssets)) {
   for (const entry of fs.readdirSync(rootAssets)) {
-    if (/\.(js|css|map)$/i.test(entry)) {
+    if (/\.(js|css|map|png)$/i.test(entry)) {
       fs.rmSync(path.join(rootAssets, entry), {force: true});
     }
   }

@@ -10,12 +10,13 @@ import {
   Sun,
 } from 'lucide-react';
 import {AlertDialog} from '@astryxdesign/core/AlertDialog';
+import {AspectRatio} from '@astryxdesign/core/AspectRatio';
 import {Button} from '@astryxdesign/core/Button';
 import {IconButton} from '@astryxdesign/core/IconButton';
 import {Card} from '@astryxdesign/core/Card';
 import {Center} from '@astryxdesign/core/Center';
 import {Divider} from '@astryxdesign/core/Divider';
-import {Grid} from '@astryxdesign/core/Grid';
+import {Grid, GridSpan} from '@astryxdesign/core/Grid';
 import {Icon} from '@astryxdesign/core/Icon';
 import {
   HStack,
@@ -37,6 +38,7 @@ import type {ThemeSlug} from '../astryx-themes';
 import {
   DIFFICULTY_META,
   DIFFICULTY_ORDER,
+  POKEMON_THUMB_URL,
   THEMES,
   TILE_THEME_ORDER,
   UI_THEME_OPTIONS,
@@ -260,12 +262,13 @@ export function HomeScreen({
 
               <Card padding={2}>
                 <VStack gap={1.5}>
-                  <Heading level={2}>이모지 타일 테마</Heading>
-                  <Grid columns={2} gap={1.5}>
+                  <Heading level={2}>타일 테마</Heading>
+                  <Grid columns={{minWidth: 165, max: 2}} gap={1.5}>
                     {TILE_THEME_ORDER.map(key => {
                       const tileTheme = THEMES[key];
                       const isActive = settings.theme === key;
-                      return (
+                      const isPokemon = key === 'pokemon';
+                      const card = (
                         <SelectableCard
                           key={key}
                           label={tileTheme.name}
@@ -276,16 +279,43 @@ export function HomeScreen({
                           padding={2}>
                           <HStack justify="between" align="center" gap={1.5}>
                             <HStack gap={1.5} align="center">
-                              <Text size="lg">{tileTheme.icon}</Text>
-                              <Text weight="medium" size="sm">
-                                {tileTheme.name}
-                              </Text>
+                              {isPokemon ? (
+                                <VStack width={32}>
+                                  <AspectRatio ratio={1} fit="contain">
+                                    <img src={POKEMON_THUMB_URL} alt="" />
+                                  </AspectRatio>
+                                </VStack>
+                              ) : (
+                                <Text size="lg">{tileTheme.icon}</Text>
+                              )}
+                              <VStack gap={0.5}>
+                                <Text weight="medium" size="sm">
+                                  {tileTheme.name}
+                                </Text>
+                                {isPokemon && (
+                                  <Text type="supporting" size="xsm">
+                                    3D 클레이 피규어 · 36종
+                                  </Text>
+                                )}
+                              </VStack>
                             </HStack>
-                            {isActive && (
-                              <Token size="sm" color="pink" label="✓" />
-                            )}
+                            <HStack gap={1} align="center">
+                              {isPokemon && (
+                                <Token size="sm" color="yellow" label="3D" />
+                              )}
+                              {isActive && (
+                                <Token size="sm" color="pink" label="✓" />
+                              )}
+                            </HStack>
                           </HStack>
                         </SelectableCard>
+                      );
+                      return isPokemon ? (
+                        <GridSpan key={key} columns="full">
+                          {card}
+                        </GridSpan>
+                      ) : (
+                        card
                       );
                     })}
                   </Grid>

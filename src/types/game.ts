@@ -47,6 +47,9 @@ export interface TileThemeConfig {
   name: string;
   icon: string;
   tiles: string[];
+  kind?: 'emoji' | 'sprite';
+  spriteCols?: number;
+  spriteRows?: number;
 }
 
 export interface SoundEngine {

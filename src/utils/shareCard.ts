@@ -16,6 +16,19 @@ export interface ShareInfo {
   streak?: number;
   /** 카드 장식용 이모지 몇 개 */
   emojis: string[];
+  /** 스프라이트 타일 테마일 때 배경 장식에 사용할 스프라이트 정보 */
+  spriteUrl?: string;
+  spriteCols?: number;
+  spriteRows?: number;
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('이미지를 불러오지 못했어요'));
+    img.src = src;
+  });
 }
 
 interface CardColors {
@@ -101,22 +114,52 @@ export async function renderShareCard(
     await document.fonts.ready.catch(() => undefined);
   }
 
+  let spriteImg: HTMLImageElement | null = null;
+  if (info.spriteUrl) {
+    spriteImg = await loadImage(info.spriteUrl).catch(() => null);
+  }
+
   // 배경
   ctx.fillStyle = colors.background;
   ctx.fillRect(0, 0, W, H);
 
-  // 흩뿌린 이모지 장식
-  ctx.globalAlpha = 0.22;
-  ctx.font = `88px ${EMOJI_FONT}`;
+  // 흩뿌린 타일/이모지 장식
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   const spots: Array<[number, number]> = [
     [110, 130], [970, 150], [90, 1220], [990, 1210], [540, 1260], [980, 690], [100, 700],
   ];
-  spots.forEach(([x, y], i) => {
-    const emoji = info.emojis[i % Math.max(info.emojis.length, 1)] ?? '🍓';
-    ctx.fillText(emoji, x, y);
-  });
+  if (spriteImg) {
+    const cols = info.spriteCols ?? 6;
+    const rows = info.spriteRows ?? 6;
+    const cellW = spriteImg.naturalWidth / cols;
+    const cellH = spriteImg.naturalHeight / rows;
+    const drawSize = 112;
+    ctx.globalAlpha = 0.36;
+    spots.forEach(([x, y], i) => {
+      const idx = i % (cols * rows);
+      const sx = (idx % cols) * cellW;
+      const sy = Math.floor(idx / cols) * cellH;
+      ctx.drawImage(
+        spriteImg!,
+        sx,
+        sy,
+        cellW,
+        cellH,
+        x - drawSize / 2,
+        y - drawSize / 2,
+        drawSize,
+        drawSize,
+      );
+    });
+  } else {
+    ctx.globalAlpha = 0.22;
+    ctx.font = `88px ${EMOJI_FONT}`;
+    spots.forEach(([x, y], i) => {
+      const emoji = info.emojis[i % Math.max(info.emojis.length, 1)] ?? '🍓';
+      ctx.fillText(emoji, x, y);
+    });
+  }
   ctx.globalAlpha = 1;
 
   // 카드

@@ -1,5 +1,10 @@
 import type {BoardInstance, Coord} from '../types/game';
-import {THEMES, TINTS, type TileThemeKey} from '../utils/gameStore';
+import {
+  THEMES,
+  TILE_SPRITE_URLS,
+  TINTS,
+  type TileThemeKey,
+} from '../utils/gameStore';
 
 const SPARKLES = ['✨', '💖', '⭐', '🌟', '💫', '🎀'];
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -72,6 +77,26 @@ const BOARD_CSS = `
     transition: transform 0.12s cubic-bezier(.3, 1.6, .5, 1), box-shadow 0.12s ease, filter 0.15s ease;
   }
 
+  .shisen-tile.is-sprite {
+    box-shadow:
+      inset 0 calc(var(--shisen-cell) * 0.04) calc(var(--shisen-cell) * 0.08) rgba(255, 255, 255, 0.7),
+      0 calc(var(--shisen-cell) * 0.08) 0 var(--color-border-emphasized, #e7c9bf),
+      0 calc(var(--shisen-cell) * 0.12) calc(var(--shisen-cell) * 0.18) var(--color-shadow, rgba(166, 104, 86, 0.24));
+  }
+
+  .shisen-tile-sprite {
+    display: block;
+    width: 88%;
+    height: 88%;
+    background-image: var(--shisen-sprite-url);
+    background-size: calc(var(--shisen-sprite-cols, 6) * 100%) calc(var(--shisen-sprite-rows, 6) * 100%);
+    background-position: var(--shisen-sprite-x, 0%) var(--shisen-sprite-y, 0%);
+    background-repeat: no-repeat;
+    pointer-events: none;
+    filter: drop-shadow(0 calc(var(--shisen-cell) * 0.045) calc(var(--shisen-cell) * 0.055) rgba(36, 20, 16, 0.28));
+    transition: transform 0.14s cubic-bezier(.3, 1.6, .5, 1), filter 0.14s ease;
+  }
+
   /*
    * 등장 애니메이션은 판을 처음 깔 때만 재생한다.
    * (기본 .shisen-tile에 두면 selected·hint·falling 등 다른 클래스를 뗄 때마다
@@ -85,6 +110,10 @@ const BOARD_CSS = `
   @media (hover: hover) {
     .shisen-tile:hover {
       transform: translateY(calc(var(--shisen-cell) * -0.07));
+    }
+    .shisen-tile:hover .shisen-tile-sprite {
+      transform: translateY(-3%) scale(1.06);
+      filter: drop-shadow(0 calc(var(--shisen-cell) * 0.07) calc(var(--shisen-cell) * 0.08) rgba(36, 20, 16, 0.34));
     }
   }
 
@@ -108,6 +137,11 @@ const BOARD_CSS = `
       0 calc(var(--shisen-cell) * 0.1) 0 var(--color-accent, #f2685a),
       0 calc(var(--shisen-cell) * 0.2) calc(var(--shisen-cell) * 0.28) var(--color-accent-muted, rgba(242, 104, 90, 0.35));
     animation: shisen-bounce 0.9s ease-in-out infinite;
+  }
+
+  .shisen-tile.selected .shisen-tile-sprite {
+    transform: translateY(-4%) scale(1.08);
+    filter: drop-shadow(0 calc(var(--shisen-cell) * 0.07) calc(var(--shisen-cell) * 0.09) rgba(36, 20, 16, 0.38));
   }
 
   .shisen-tile.hint {
@@ -482,13 +516,58 @@ export class BoardController {
     window.addEventListener('resize', this.handleResize);
   }
 
-  private emoji(v: number): string {
-    const tiles = THEMES[this.themeKey].tiles;
-    return tiles[(v - 1) % tiles.length];
-  }
-
   private tint(v: number): string {
     return TINTS[(v - 1) % TINTS.length];
+  }
+
+  private applyThemeVars(): void {
+    const theme = THEMES[this.themeKey];
+    const spriteUrl = TILE_SPRITE_URLS[this.themeKey];
+    if (theme.kind === 'sprite' && spriteUrl) {
+      const cols = theme.spriteCols ?? 6;
+      const rows = theme.spriteRows ?? 6;
+      this.boardEl.style.setProperty('--shisen-sprite-url', `url("${spriteUrl}")`);
+      this.boardEl.style.setProperty('--shisen-sprite-cols', String(cols));
+      this.boardEl.style.setProperty('--shisen-sprite-rows', String(rows));
+    } else {
+      this.boardEl.style.removeProperty('--shisen-sprite-url');
+      this.boardEl.style.removeProperty('--shisen-sprite-cols');
+      this.boardEl.style.removeProperty('--shisen-sprite-rows');
+    }
+  }
+
+  private applyTileVisual(btn: HTMLButtonElement, v: number): void {
+    const theme = THEMES[this.themeKey];
+    const idx = (v - 1) % theme.tiles.length;
+    const label = theme.tiles[idx];
+    const spriteUrl = TILE_SPRITE_URLS[this.themeKey];
+
+    btn.setAttribute('aria-label', `${label} 타일`);
+    btn.style.setProperty('--shisen-tint', this.tint(v));
+
+    if (theme.kind === 'sprite' && spriteUrl) {
+      const cols = theme.spriteCols ?? 6;
+      const rows = theme.spriteRows ?? 6;
+      const col = idx % cols;
+      const row = Math.floor(idx / cols);
+      const posX = cols > 1 ? (col * 100) / (cols - 1) : 0;
+      const posY = rows > 1 ? (row * 100) / (rows - 1) : 0;
+
+      btn.classList.add('is-sprite');
+      let spriteEl = btn.querySelector<HTMLSpanElement>(':scope > .shisen-tile-sprite');
+      if (!spriteEl) {
+        btn.textContent = '';
+        spriteEl = document.createElement('span');
+        spriteEl.className = 'shisen-tile-sprite';
+        spriteEl.setAttribute('aria-hidden', 'true');
+        btn.appendChild(spriteEl);
+      }
+      spriteEl.style.setProperty('--shisen-sprite-x', `${posX}%`);
+      spriteEl.style.setProperty('--shisen-sprite-y', `${posY}%`);
+    } else {
+      btn.classList.remove('is-sprite');
+      btn.textContent = label;
+    }
   }
 
   /** 칸의 현재 타일 (사라지는 중인 타일은 제외) */
@@ -514,10 +593,7 @@ export class BoardController {
     btn.id = `tile-${r}-${c}`;
     btn.dataset.r = String(r);
     btn.dataset.c = String(c);
-    const glyph = this.emoji(v);
-    btn.textContent = glyph;
-    btn.setAttribute('aria-label', `${glyph} 타일`);
-    btn.style.setProperty('--shisen-tint', this.tint(v));
+    this.applyTileVisual(btn, v);
     btn.style.setProperty('--shisen-delay', `${delay || 0}ms`);
     onAnimationEnd(btn, 'shisen-tile-in', () => btn.classList.remove('entering'));
     cell.appendChild(btn);
@@ -533,6 +609,7 @@ export class BoardController {
 
     this.stageRoot.style.setProperty('--shisen-rows', String(this.gridRows));
     this.stageRoot.style.setProperty('--shisen-cols', String(this.gridCols));
+    this.applyThemeVars();
     this.pathEl.setAttribute(
       'viewBox',
       `0 0 ${this.gridCols - 1} ${this.gridRows - 1}`,
@@ -679,6 +756,7 @@ export class BoardController {
   refreshAll(board: BoardInstance): void {
     this.clearRefreshTimers();
     this.board = board;
+    this.applyThemeVars();
     for (let r = 0; r < this.gridRows; r++) {
       for (let c = 0; c < this.gridCols; c++) {
         const v = board.get(r, c);
@@ -688,13 +766,11 @@ export class BoardController {
           continue;
         }
         const btn = el || this.placeTile(r, c, v, 0);
-        btn.className = 'shisen-tile flip';
+        btn.classList.remove('entering', 'selected', 'hint', 'shake', 'falling');
+        btn.classList.add('flip');
         btn.style.setProperty('--shisen-delay', `${(r + c) * 12}ms`);
         const timer = window.setTimeout(() => {
-          const glyph = this.emoji(v);
-          btn.textContent = glyph;
-          btn.setAttribute('aria-label', `${glyph} 타일`);
-          btn.style.setProperty('--shisen-tint', this.tint(v));
+          this.applyTileVisual(btn, v);
         }, 250 + (r + c) * 12);
         this.refreshTimers.push(timer);
         onAnimationEnd(btn, 'shisen-flip', () => btn.classList.remove('flip'));
@@ -705,15 +781,13 @@ export class BoardController {
   retheme(board: BoardInstance, themeKey: TileThemeKey): void {
     this.themeKey = themeKey;
     this.board = board;
+    this.applyThemeVars();
     for (let r = 0; r < this.gridRows; r++) {
       for (let c = 0; c < this.gridCols; c++) {
         const v = board.get(r, c);
         const el = this.tileEl({r, c});
         if (v && el) {
-          const glyph = this.emoji(v);
-          el.textContent = glyph;
-          el.setAttribute('aria-label', `${glyph} 타일`);
-          el.style.setProperty('--shisen-tint', this.tint(v));
+          this.applyTileVisual(el, v);
         }
       }
     }
