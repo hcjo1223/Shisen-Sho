@@ -30,6 +30,7 @@ import {
   longestStreak,
   todayKey,
 } from '../utils/daily';
+import {safeAreaStyles} from '../styles/safeArea';
 
 export interface DashboardScreenProps {
   stats: GameStats;
@@ -51,7 +52,7 @@ export function DashboardScreen({
   const dailyDays = Object.keys(dailyRecords).length;
 
   return (
-    <VStack height="100dvh">
+    <VStack height="100dvh" xstyle={safeAreaStyles.screen}>
       <Layout
         height="fill"
         contentWidth={680}

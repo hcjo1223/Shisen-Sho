@@ -85,6 +85,7 @@ import {
   transposeGrid,
 } from '../utils/daily';
 import {shareResult, type ShareInfo} from '../utils/shareCard';
+import {safeAreaStyles} from '../styles/safeArea';
 
 export interface GameScreenProps {
   settings: GameSettings;
@@ -807,7 +808,7 @@ export function GameScreen({
   ]);
 
   return (
-    <VStack height="100dvh">
+    <VStack height="100dvh" xstyle={safeAreaStyles.screen}>
       <Layout
         height="fill"
         header={
