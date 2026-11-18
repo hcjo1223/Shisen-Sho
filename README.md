@@ -16,9 +16,18 @@
 
 ## 실행
 ```bash
-# 아무 정적 서버로 열면 됩니다 (또는 index.html 더블클릭)
-python3 -m http.server 8080
+npm ci
+npm run dev      # 개발 서버
+npm run build    # dist/ 빌드 + 저장소 루트로 동기화 (현재 Pages가 루트를 서빙)
 ```
+
+## 오프라인 / 설치
+- 홈 화면에 추가(PWA)할 수 있고, 한 번 열고 나면 서비스 워커가 게임 파일을 저장해 **오프라인에서도** 플레이할 수 있어요.
+- 새 버전이 배포되면 다음 실행 때 자동으로 갱신돼요.
+
+## CI / 배포
+- `.github/workflows/ci.yml`: 모든 push·PR에서 테스트 → 타입 체크 → 빌드, 그리고 루트에 커밋된 빌드 산출물이 최신인지 확인해요.
+- `.github/workflows/deploy.yml`: `main`에 push하면 `dist/`를 GitHub Pages로 배포해요. 저장소 **Settings → Pages → Source**를 **GitHub Actions**로 바꿔야 동작해요.
 
 ## 테스트
 ```bash

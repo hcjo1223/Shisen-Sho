@@ -31,11 +31,24 @@ if (fs.existsSync(distAssets)) {
   }
 }
 
+// 서비스 워커(vite-plugin-pwa) 산출물: 이전 빌드의 workbox 런타임은 지운다
+for (const entry of fs.readdirSync(rootDir)) {
+  if (/^workbox-[\w-]+\.js$/.test(entry)) {
+    fs.rmSync(path.join(rootDir, entry), {force: true});
+  }
+}
+const workboxFiles = fs
+  .readdirSync(distDir)
+  .filter(entry => /^workbox-[\w-]+\.js$/.test(entry));
+
 const publicFiles = [
   'favicon.svg',
   'favicon-32x32.png',
   'apple-touch-icon.png',
   'manifest.webmanifest',
+  'sw.js',
+  'registerSW.js',
+  ...workboxFiles,
 ];
 for (const file of publicFiles) {
   const srcFile = path.join(distDir, file);
