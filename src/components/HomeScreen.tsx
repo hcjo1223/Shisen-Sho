@@ -1,12 +1,17 @@
+import {useState} from 'react';
 import {
   BarChart3,
+  CalendarHeart,
   Monitor,
   Moon,
   Palette,
   Play,
+  RotateCcw,
   Sun,
 } from 'lucide-react';
+import {AlertDialog} from '@astryxdesign/core/AlertDialog';
 import {Button} from '@astryxdesign/core/Button';
+import {IconButton} from '@astryxdesign/core/IconButton';
 import {Card} from '@astryxdesign/core/Card';
 import {Center} from '@astryxdesign/core/Center';
 import {Divider} from '@astryxdesign/core/Divider';
@@ -35,16 +40,30 @@ import {
   THEMES,
   TILE_THEME_ORDER,
   UI_THEME_OPTIONS,
+  countRemaining,
   formatTime,
+  formatTimerClock,
   getBestMs,
   type ColorModeKey,
   type DifficultyKey,
   type GameSettings,
+  type SavedGame,
   type TileThemeKey,
 } from '../utils/gameStore';
+import {
+  DAILY_DIFFICULTY,
+  currentStreak,
+  formatDailyLabel,
+  loadDailyRecords,
+  todayKey,
+} from '../utils/daily';
 
 export interface HomeScreenProps {
   settings: GameSettings;
+  /** 이어할 수 있는 저장된 판 (없으면 null) */
+  savedGame: SavedGame | null;
+  onResumeGame: () => void;
+  onStartDaily: () => void;
   onSelectDifficulty: (diff: DifficultyKey) => void;
   onSelectTileTheme: (theme: TileThemeKey) => void;
   onChangeUiTheme: (uiTheme: ThemeSlug) => void;
@@ -57,6 +76,9 @@ export interface HomeScreenProps {
 
 export function HomeScreen({
   settings,
+  savedGame,
+  onResumeGame,
+  onStartDaily,
   onSelectDifficulty,
   onSelectTileTheme,
   onChangeUiTheme,
@@ -66,6 +88,26 @@ export function HomeScreen({
   onStartGame,
   onOpenDashboard,
 }: HomeScreenProps) {
+  /** 하던 판을 버리고 시작할 판 (확인 대기) */
+  const [pendingStart, setPendingStart] = useState<'classic' | 'daily' | null>(
+    null,
+  );
+  const savedMeta = savedGame ? DIFFICULTY_META[savedGame.difficulty] : null;
+  const savedRemaining = savedGame ? countRemaining(savedGame.grid) : 0;
+  const savedIsDaily = savedGame?.mode === 'daily';
+
+  const today = todayKey();
+  const dailyRecords = loadDailyRecords();
+  const todayRecord = dailyRecords[today];
+  const streak = currentStreak(dailyRecords, today);
+  const dailyMeta = DIFFICULTY_META[DAILY_DIFFICULTY];
+
+  const handleDailyClick = () => {
+    if (savedIsDaily) onResumeGame();
+    else if (savedGame) setPendingStart('daily');
+    else onStartDaily();
+  };
+
   return (
     <VStack height="100dvh">
       <Layout
@@ -94,6 +136,62 @@ export function HomeScreen({
                   </Text>
                 </VStack>
               </Center>
+
+              {savedGame && savedMeta && (
+                <Card padding={2} elevation="low">
+                  <HStack justify="between" align="center" gap={2} wrap="wrap">
+                    <VStack gap={0.5}>
+                      <Heading level={2}>하던 판이 있어요</Heading>
+                      <Text type="supporting" size="sm">
+                        {`${savedIsDaily ? '🗓️ 오늘의 챌린지' : `${savedMeta.icon} ${savedMeta.name}`} · 남은 ${savedRemaining}개 · ${formatTimerClock(savedGame.elapsedMs)}`}
+                      </Text>
+                    </VStack>
+                    <Token
+                      size="sm"
+                      color="orange"
+                      label={`${Math.round((1 - savedRemaining / savedMeta.tiles) * 100)}% 진행`}
+                    />
+                  </HStack>
+                </Card>
+              )}
+
+              <Card padding={2}>
+                <VStack gap={1.5}>
+                  <HStack justify="between" align="center" gap={2} wrap="wrap">
+                    <VStack gap={0.5}>
+                      <Heading level={2}>🗓️ 오늘의 챌린지</Heading>
+                      <Text type="supporting" size="sm">
+                        {`${formatDailyLabel(today)} · ${dailyMeta.icon} ${dailyMeta.name} ${dailyMeta.tiles}개 · 오늘은 모두 같은 판`}
+                      </Text>
+                    </VStack>
+                    <HStack gap={1} align="center" wrap="wrap">
+                      {todayRecord && (
+                        <Token
+                          size="sm"
+                          color="green"
+                          label={`완료 ${formatTime(todayRecord.bestMs)}`}
+                        />
+                      )}
+                      {streak > 0 && (
+                        <Token size="sm" color="orange" label={`🔥 ${streak}일 연속`} />
+                      )}
+                    </HStack>
+                  </HStack>
+                  <Button
+                    label={
+                      savedIsDaily
+                        ? '챌린지 이어하기'
+                        : todayRecord
+                          ? '기록 갱신 도전'
+                          : '오늘의 챌린지 도전'
+                    }
+                    variant={todayRecord ? 'secondary' : 'primary'}
+                    width="100%"
+                    icon={<Icon icon={CalendarHeart} size="sm" />}
+                    onClick={handleDailyClick}
+                  />
+                </VStack>
+              </Card>
 
               <Card padding={2}>
                 <VStack gap={1.5}>
@@ -258,26 +356,77 @@ export function HomeScreen({
         footer={
           <LayoutFooter hasDivider padding={2}>
             <Center>
-              <HStack gap={2} width="100%" maxWidth={620} justify="center">
-                <Button
-                  label="대시보드"
-                  variant="secondary"
-                  size="lg"
-                  icon={<Icon icon={BarChart3} size="sm" />}
-                  onClick={onOpenDashboard}
-                />
-                <Button
-                  label="게임 시작"
-                  variant="primary"
-                  size="lg"
-                  width="fill"
-                  icon={<Icon icon={Play} size="sm" />}
-                  onClick={onStartGame}
-                />
-              </HStack>
+              {savedGame ? (
+                <HStack gap={2} width="100%" maxWidth={620} justify="center">
+                  <IconButton
+                    label="대시보드"
+                    variant="secondary"
+                    size="lg"
+                    icon={<Icon icon={BarChart3} size="sm" />}
+                    onClick={onOpenDashboard}
+                  />
+                  <Button
+                    label="새 게임"
+                    variant="secondary"
+                    size="lg"
+                    icon={<Icon icon={RotateCcw} size="sm" />}
+                    onClick={() => setPendingStart('classic')}
+                  />
+                  <Button
+                    label="이어하기"
+                    variant="primary"
+                    size="lg"
+                    width="fill"
+                    icon={<Icon icon={Play} size="sm" />}
+                    onClick={onResumeGame}
+                  />
+                </HStack>
+              ) : (
+                <HStack gap={2} width="100%" maxWidth={620} justify="center">
+                  <Button
+                    label="대시보드"
+                    variant="secondary"
+                    size="lg"
+                    icon={<Icon icon={BarChart3} size="sm" />}
+                    onClick={onOpenDashboard}
+                  />
+                  <Button
+                    label="게임 시작"
+                    variant="primary"
+                    size="lg"
+                    width="fill"
+                    icon={<Icon icon={Play} size="sm" />}
+                    onClick={onStartGame}
+                  />
+                </HStack>
+              )}
             </Center>
           </LayoutFooter>
         }
+      />
+
+      <AlertDialog
+        isOpen={pendingStart != null}
+        onOpenChange={open => {
+          if (!open) setPendingStart(null);
+        }}
+        title={
+          pendingStart === 'daily' ? '오늘의 챌린지를 시작할까요?' : '새 판을 시작할까요?'
+        }
+        description={
+          pendingStart === 'daily'
+            ? '하던 판은 사라지고 오늘의 챌린지를 시작해요.'
+            : '하던 판은 사라지고 선택한 난이도로 새로 시작해요.'
+        }
+        actionLabel="새로 시작"
+        cancelLabel="이어서 할래요"
+        actionVariant="primary"
+        onAction={() => {
+          const start = pendingStart;
+          setPendingStart(null);
+          if (start === 'daily') onStartDaily();
+          else onStartGame();
+        }}
       />
     </VStack>
   );

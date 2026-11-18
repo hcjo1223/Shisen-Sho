@@ -8,12 +8,14 @@ import {GameScreen} from './components/GameScreen';
 import {HomeScreen} from './components/HomeScreen';
 import {
   Sound,
+  loadSavedGame,
   loadSettings,
   loadStats,
   saveSettings,
   saveStats,
   type ColorModeKey,
   type DifficultyKey,
+  type GameEntry,
   type GameSettings,
   type GameStats,
   type ScreenName,
@@ -24,7 +26,8 @@ interface AppShellProps {
   settings: GameSettings;
   stats: GameStats;
   screen: ScreenName;
-  onNavigate: (nextScreen: ScreenName) => void;
+  gameEntry: GameEntry;
+  onNavigate: (nextScreen: ScreenName, entry?: GameEntry) => void;
   onUpdateSettings: (patch: Partial<GameSettings>) => void;
   onUpdateStats: (nextStats: GameStats) => void;
 }
@@ -33,6 +36,7 @@ function AppShell({
   settings,
   stats,
   screen,
+  gameEntry,
   onNavigate,
   onUpdateSettings,
   onUpdateStats,
@@ -105,7 +109,23 @@ function AppShell({
 
   const handleStartGame = useCallback(() => {
     Sound.unlock();
-    onNavigate('game');
+    onNavigate('game', 'new');
+  }, [onNavigate]);
+
+  const handleResumeGame = useCallback(() => {
+    Sound.unlock();
+    onNavigate('game', 'resume');
+  }, [onNavigate]);
+
+  const handleStartDaily = useCallback(() => {
+    Sound.unlock();
+    onNavigate('game', 'daily');
+  }, [onNavigate]);
+
+  /** 대시보드의 플레이 버튼: 저장된 판이 있으면 이어하기 */
+  const handlePlayFromDashboard = useCallback(() => {
+    Sound.unlock();
+    onNavigate('game', loadSavedGame() != null ? 'resume' : 'new');
   }, [onNavigate]);
 
   const handleOpenDashboard = useCallback(() => {
@@ -121,6 +141,9 @@ function AppShell({
     return (
       <HomeScreen
         settings={settings}
+        savedGame={loadSavedGame()}
+        onResumeGame={handleResumeGame}
+        onStartDaily={handleStartDaily}
         onSelectDifficulty={handleSelectDifficulty}
         onSelectTileTheme={handleSelectTileTheme}
         onChangeUiTheme={handleChangeUiTheme}
@@ -138,7 +161,7 @@ function AppShell({
       <DashboardScreen
         stats={stats}
         onBackHome={handleBackHome}
-        onStartGame={handleStartGame}
+        onStartGame={handlePlayFromDashboard}
       />
     );
   }
@@ -146,6 +169,7 @@ function AppShell({
   return (
     <GameScreen
       settings={settings}
+      entry={gameEntry}
       stats={stats}
       onUpdateStats={onUpdateStats}
       onChangeDifficulty={difficulty => onUpdateSettings({difficulty})}
@@ -163,6 +187,15 @@ function AppShell({
 
 export default function App() {
   const [screen, setScreen] = useState<ScreenName>('home');
+  const [gameEntry, setGameEntry] = useState<GameEntry>('new');
+
+  const handleNavigate = useCallback(
+    (nextScreen: ScreenName, entry: GameEntry = 'new') => {
+      if (nextScreen === 'game') setGameEntry(entry);
+      setScreen(nextScreen);
+    },
+    [],
+  );
   const [settings, setSettings] = useState<GameSettings>(() => {
     const initial = loadSettings();
     Sound.enabled = initial.sound;
@@ -228,7 +261,8 @@ export default function App() {
           settings={settings}
           stats={stats}
           screen={screen}
-          onNavigate={setScreen}
+          gameEntry={gameEntry}
+          onNavigate={handleNavigate}
           onUpdateSettings={handleUpdateSettings}
           onUpdateStats={handleUpdateStats}
         />

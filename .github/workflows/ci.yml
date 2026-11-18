@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: 경로 탐색 테스트
+        run: npm test
+
+      - name: 타입 체크
+        run: npm run typecheck
+
+      - name: 빌드
+        run: npm run build
+
+      # GitHub Pages가 저장소 루트(legacy)를 서빙하는 동안에는
+      # 루트에 커밋된 빌드 산출물이 소스와 일치해야 한다.
+      - name: 루트 빌드 산출물 최신 여부 확인
+        run: |
+          changed="$(git status --porcelain -- index.html assets sw.js registerSW.js 'workbox-*.js')"
+          if [ -n "$changed" ]; then
+            echo "::error::루트 빌드 산출물이 소스와 달라요. 'npm run build' 후 결과를 커밋해 주세요."
+            echo "$changed"
+            exit 1
+          fi

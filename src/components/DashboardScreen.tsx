@@ -23,6 +23,13 @@ import {
   getBestMs,
   type GameStats,
 } from '../utils/gameStore';
+import {
+  currentStreak,
+  formatDailyLabel,
+  loadDailyRecords,
+  longestStreak,
+  todayKey,
+} from '../utils/daily';
 
 export interface DashboardScreenProps {
   stats: GameStats;
@@ -38,6 +45,10 @@ export function DashboardScreen({
   const totalMinutes = Math.floor(stats.totalPlayMs / 60000);
   const unlockedSet = new Set(stats.unlockedBadges);
   const unlockedCount = BADGES.filter(b => unlockedSet.has(b.id)).length;
+  const dailyRecords = loadDailyRecords();
+  const today = todayKey();
+  const todayRecord = dailyRecords[today];
+  const dailyDays = Object.keys(dailyRecords).length;
 
   return (
     <VStack height="100dvh">
@@ -154,6 +165,43 @@ export function DashboardScreen({
                         />
                       );
                     })}
+                  </List>
+                </VStack>
+              </Card>
+
+              <Card padding={3}>
+                <VStack gap={2}>
+                  <Heading level={3}>🗓️ 오늘의 챌린지</Heading>
+                  <List edge="bleed" hasDividers density="balanced">
+                    <ListItem
+                      startContent={<Text size="lg">🗓️</Text>}
+                      label={`오늘 (${formatDailyLabel(today)})`}
+                      endContent={
+                        <Token
+                          color={todayRecord ? 'green' : 'gray'}
+                          label={todayRecord ? formatTime(todayRecord.bestMs) : '아직 도전 전'}
+                        />
+                      }
+                    />
+                    <ListItem
+                      startContent={<Text size="lg">🔥</Text>}
+                      label="현재 연속"
+                      endContent={
+                        <Token color="orange" label={`${currentStreak(dailyRecords, today)}일`} />
+                      }
+                    />
+                    <ListItem
+                      startContent={<Text size="lg">🌈</Text>}
+                      label="최장 연속"
+                      endContent={
+                        <Token color="purple" label={`${longestStreak(dailyRecords)}일`} />
+                      }
+                    />
+                    <ListItem
+                      startContent={<Text size="lg">✅</Text>}
+                      label="챌린지 클리어한 날"
+                      endContent={<Token color="gray" label={`${dailyDays}일`} />}
+                    />
                   </List>
                 </VStack>
               </Card>

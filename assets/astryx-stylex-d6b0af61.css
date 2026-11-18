@@ -2448,10 +2448,6 @@
       background-color: var(--color-overlay-hover);
     }
 
-    .astryxi89dp7 {
-      background-color: var(--color-overlay-pressed);
-    }
-
     .astryxu13z74 {
       background-color: var(--color-success-muted);
     }
@@ -4132,10 +4128,6 @@
       vertical-align: top;
     }
 
-    .astryxlshs6z {
-      visibility: hidden;
-    }
-
     .astryxeaf4i8 {
       white-space: normal;
     }
@@ -4174,6 +4166,10 @@
 
     .astryx1vjfegm {
       z-index: 1;
+    }
+
+    .astryxfo81ep {
+      z-index: 1000;
     }
 
     .astryxhtitgo {
@@ -5152,10 +5148,6 @@
 
     .astryxvle69y {
       height: .75rem;
-    }
-
-    .astryxqtp20y {
-      height: 0;
     }
 
     .astryxmll18r {
