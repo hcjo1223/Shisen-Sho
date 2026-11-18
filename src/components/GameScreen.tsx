@@ -38,7 +38,6 @@ import {Selector} from '@astryxdesign/core/Selector';
 import {Switch} from '@astryxdesign/core/Switch';
 import {Heading, Text} from '@astryxdesign/core/Text';
 import {Token} from '@astryxdesign/core/Token';
-import type {ThemeSlug} from '../astryx-themes';
 import {BoardController} from '../board/boardController';
 import type {BoardInstance, Coord} from '../types/game';
 import {
@@ -52,9 +51,9 @@ import {
   MAX_SHUFFLES,
   Sound,
   THEMES,
+  THEME_META,
   TILE_SPRITE_URLS,
   TILE_THEME_ORDER,
-  UI_THEME_OPTIONS,
   clearSavedGame,
   createBoard,
   createBoardFromGrid,
@@ -97,7 +96,6 @@ export interface GameScreenProps {
   onChangeDifficulty: (diff: DifficultyKey) => void;
   onChangeGravity: (enabled: boolean) => void;
   onChangeTileTheme: (theme: TileThemeKey) => void;
-  onChangeUiTheme: (uiTheme: ThemeSlug) => void;
   onChangeColorMode: (mode: ColorModeKey) => void;
   onToggleBgm: (enabled: boolean) => void;
   onToggleSound: (enabled: boolean) => void;
@@ -134,12 +132,7 @@ const DIFFICULTY_SELECTOR_OPTIONS = DIFFICULTY_ORDER.map(key => ({
 
 const TILE_THEME_SELECTOR_OPTIONS = TILE_THEME_ORDER.map(key => ({
   value: key,
-  label: `${THEMES[key].icon} ${THEMES[key].name}`,
-}));
-
-const UI_THEME_SELECTOR_OPTIONS = UI_THEME_OPTIONS.map(option => ({
-  value: option.value,
-  label: option.label,
+  label: `${THEMES[key].icon} ${THEMES[key].name} (${THEME_META[key].uiLabel})`,
 }));
 
 export function GameScreen({
@@ -150,7 +143,6 @@ export function GameScreen({
   onChangeDifficulty,
   onChangeGravity,
   onChangeTileTheme,
-  onChangeUiTheme,
   onChangeColorMode,
   onToggleBgm,
   onToggleSound,
@@ -1028,9 +1020,10 @@ export function GameScreen({
             onChange={handleDifficultyChange}
           />
           <Selector
-            label="타일 테마"
+            label="게임 테마 (타일 & UI 디자인)"
             presentation="adaptive"
             width="100%"
+            startIcon={<Icon icon={Palette} size="sm" />}
             options={TILE_THEME_SELECTOR_OPTIONS}
             value={settings.theme}
             onChange={handleTileThemeChange}
@@ -1041,15 +1034,6 @@ export function GameScreen({
             labelSpacing="spread"
             value={settings.gravity}
             onChange={checked => handleGravityChange(checked)}
-          />
-          <Selector
-            label="UI 테마"
-            presentation="adaptive"
-            width="100%"
-            startIcon={<Icon icon={Palette} size="sm" />}
-            options={UI_THEME_SELECTOR_OPTIONS}
-            value={settings.uiTheme}
-            onChange={val => onChangeUiTheme(val as ThemeSlug)}
           />
 
           <VStack gap={1}>

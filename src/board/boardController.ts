@@ -236,6 +236,15 @@ const BOARD_CSS = `
     opacity: 0.65;
   }
 
+  .shisen-stage-root[data-theme="animal"] .shisen-path-line.glow {
+    stroke: #9af0b6;
+  }
+
+  .shisen-stage-root[data-theme="pokemon"] .shisen-path-line.glow {
+    stroke: #ffdf5d;
+    opacity: 0.78;
+  }
+
   .shisen-path-line.core {
     stroke: var(--color-accent, #f2685a);
     stroke-width: 0.12;
@@ -517,12 +526,14 @@ export class BoardController {
   }
 
   private tint(v: number): string {
-    return TINTS[(v - 1) % TINTS.length];
+    const tints = THEMES[this.themeKey]?.tints ?? TINTS;
+    return tints[(v - 1) % tints.length];
   }
 
   private applyThemeVars(): void {
     const theme = THEMES[this.themeKey];
     const spriteUrl = TILE_SPRITE_URLS[this.themeKey];
+    this.stageRoot.dataset.theme = this.themeKey;
     if (theme.kind === 'sprite' && spriteUrl) {
       const cols = theme.spriteCols ?? 6;
       const rows = theme.spriteRows ?? 6;
@@ -737,10 +748,11 @@ export class BoardController {
     );
     const cell = parseFloat(cellStr) || 48;
     const count = 5 + Math.min(intensity || 1, 6) * 2;
+    const sparkles = THEMES[this.themeKey]?.sparkles ?? SPARKLES;
     for (let i = 0; i < count; i++) {
       const s = document.createElement('span');
       s.className = 'shisen-particle';
-      s.textContent = SPARKLES[Math.floor(Math.random() * SPARKLES.length)];
+      s.textContent = sparkles[Math.floor(Math.random() * sparkles.length)];
       const ang = (Math.PI * 2 * i) / count + Math.random() * 0.5;
       const dist = cell * (0.6 + Math.random() * 0.7);
       s.style.left = `${cellCenter(p.c, this.gridCols) * cell}px`;

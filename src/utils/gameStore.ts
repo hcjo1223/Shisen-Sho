@@ -10,6 +10,9 @@ import RawSound from '../../js/sound.js';
 import type {ThemeSlug} from '../astryx-themes';
 import pokemonSpriteUrl from '../assets/pokemon-gen1-sheet.png';
 import pokemonThumbUrl from '../assets/pokemon-pikachu-icon.png';
+import fruitDioramaUrl from '../assets/theme-fruit.png';
+import animalDioramaUrl from '../assets/theme-animal.png';
+import pokemonDioramaUrl from '../assets/theme-pokemon.png';
 import {todayKey} from './daily';
 import type {
   BoardConstructor,
@@ -38,7 +41,7 @@ export const TINTS = RawTINTS as string[];
 export const Sound = RawSound as unknown as SoundEngine;
 
 export type DifficultyKey = 'easy' | 'normal' | 'hard';
-export type TileThemeKey = 'fruit' | 'animal' | 'dessert' | 'mix' | 'pokemon';
+export type TileThemeKey = 'fruit' | 'animal' | 'pokemon';
 export type ColorModeKey = 'system' | 'light' | 'dark';
 export type ScreenName = 'home' | 'dashboard' | 'game';
 
@@ -47,6 +50,85 @@ export const TILE_SPRITE_URLS: Partial<Record<TileThemeKey, string>> = {
 };
 
 export const POKEMON_THUMB_URL = pokemonThumbUrl;
+
+export const THEME_DIORAMA_URLS: Record<TileThemeKey, string> = {
+  fruit: fruitDioramaUrl,
+  animal: animalDioramaUrl,
+  pokemon: pokemonDioramaUrl,
+};
+
+/** 선택한 타일 테마에 맞춰 자동으로 적용되는 Astryx UI 디자인 테마 */
+export const THEME_UI_MAP: Record<TileThemeKey, ThemeSlug> = {
+  fruit: 'malang',
+  animal: 'meadow',
+  pokemon: 'kanto',
+};
+
+export type TokenColor =
+  | 'red'
+  | 'orange'
+  | 'yellow'
+  | 'green'
+  | 'teal'
+  | 'blue'
+  | 'purple'
+  | 'pink';
+
+export const THEME_META: Record<
+  TileThemeKey,
+  {
+    subtitle: string;
+    tagline: string;
+    uiLabel: string;
+    badge: string;
+    badgeColor: 'pink' | 'green' | 'yellow';
+    heroTokens: ReadonlyArray<{label: string; color: TokenColor}>;
+  }
+> = {
+  fruit: {
+    subtitle: '상큼한 과일 & 채소 · 피치 코랄 과수원 UI',
+    tagline: '상큼달콤 과일 농장 힐링 퍼즐',
+    uiLabel: '피치 코랄 과수원',
+    badge: '과수원 무드',
+    badgeColor: 'pink',
+    heroTokens: [
+      {label: '🍓', color: 'red'},
+      {label: '🍑', color: 'pink'},
+      {label: '🍊', color: 'orange'},
+      {label: '🍒', color: 'red'},
+      {label: '🍋', color: 'yellow'},
+    ],
+  },
+  animal: {
+    subtitle: '포근한 동물 친구들 · 클로버 숲속 초원 UI',
+    tagline: '포근포근 숲속 동물 친구들 힐링 퍼즐',
+    uiLabel: '클로버 숲속 초원',
+    badge: '초원 무드',
+    badgeColor: 'green',
+    heroTokens: [
+      {label: '🐶', color: 'orange'},
+      {label: '🐱', color: 'yellow'},
+      {label: '🐰', color: 'pink'},
+      {label: '🍀', color: 'green'},
+      {label: '🐼', color: 'teal'},
+    ],
+  },
+  pokemon: {
+    subtitle: '3D 클레이 1세대 36종 · 관동 몬스터볼 UI',
+    tagline: '입체 클레이 피규어 포켓몬 1세대 사천성',
+    uiLabel: '관동 몬스터볼',
+    badge: '3D 클레이',
+    badgeColor: 'yellow',
+    heroTokens: [
+      {label: '⚡', color: 'yellow'},
+      {label: '🔥', color: 'red'},
+      {label: '💧', color: 'blue'},
+      {label: '🍃', color: 'green'},
+      {label: '✨', color: 'purple'},
+    ],
+  },
+};
+
 /** 게임 화면 진입 방식: 새 판 / 저장된 판 이어하기 / 오늘의 챌린지 */
 export type GameEntry = 'new' | 'resume' | 'daily';
 export type GameMode = 'classic' | 'daily';
@@ -101,41 +183,7 @@ export const DIFFICULTY_META: Record<
 export const TILE_THEME_ORDER: readonly TileThemeKey[] = [
   'fruit',
   'animal',
-  'dessert',
-  'mix',
   'pokemon',
-];
-
-export const UI_THEME_OPTIONS: Array<{
-  value: ThemeSlug;
-  label: string;
-  description: string;
-}> = [
-  {
-    value: 'malang',
-    label: '말랑 파스텔',
-    description: '코랄 피치 · Jua 기본 테마',
-  },
-  {
-    value: 'butter',
-    label: '버터 크림',
-    description: '따뜻한 크림 · 클래식 페이퍼',
-  },
-  {
-    value: 'matcha',
-    label: '말차 그린',
-    description: '차분한 허브 그린 감성',
-  },
-  {
-    value: 'y2k',
-    label: 'Y2K 팝',
-    description: '레트로 비비드 픽셀 무드',
-  },
-  {
-    value: 'neutral',
-    label: '미니멀 뉴트럴',
-    description: '깔끔한 모노톤 UI',
-  },
 ];
 
 export interface BadgeInfo {
@@ -198,14 +246,6 @@ const DEFAULT_SETTINGS: GameSettings = {
   gravity: false,
 };
 
-const VALID_UI_THEMES = new Set<ThemeSlug>([
-  'malang',
-  'butter',
-  'matcha',
-  'y2k',
-  'neutral',
-]);
-
 export function loadSettings(): GameSettings {
   try {
     const raw = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') as Partial<
@@ -217,19 +257,13 @@ export function loadSettings(): GameSettings {
       raw.difficulty === 'hard'
         ? raw.difficulty
         : DEFAULT_SETTINGS.difficulty;
-    const theme =
+    const theme: TileThemeKey =
       raw.theme === 'fruit' ||
       raw.theme === 'animal' ||
-      raw.theme === 'dessert' ||
-      raw.theme === 'mix' ||
       raw.theme === 'pokemon'
         ? raw.theme
         : DEFAULT_SETTINGS.theme;
-    const uiTheme =
-      typeof raw.uiTheme === 'string' &&
-      VALID_UI_THEMES.has(raw.uiTheme as ThemeSlug)
-        ? (raw.uiTheme as ThemeSlug)
-        : DEFAULT_SETTINGS.uiTheme;
+    const uiTheme = THEME_UI_MAP[theme];
     const colorMode =
       raw.colorMode === 'system' ||
       raw.colorMode === 'light' ||

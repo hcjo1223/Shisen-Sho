@@ -50,6 +50,8 @@ export interface TileThemeConfig {
   kind?: 'emoji' | 'sprite';
   spriteCols?: number;
   spriteRows?: number;
+  tints?: string[];
+  sparkles?: string[];
 }
 
 export interface SoundEngine {

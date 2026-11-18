@@ -2,13 +2,14 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import {LayerProvider} from '@astryxdesign/core/Layer';
 import {Theme} from '@astryxdesign/core/theme';
 import {useToast} from '@astryxdesign/core/Toast';
-import {themes, type ThemeSlug} from './astryx-themes';
+import {themes} from './astryx-themes';
 import {applyPendingUpdate, initPwaUpdate} from './utils/pwaUpdate';
 import {DashboardScreen} from './components/DashboardScreen';
 import {GameScreen} from './components/GameScreen';
 import {HomeScreen} from './components/HomeScreen';
 import {
   Sound,
+  THEME_UI_MAP,
   loadSavedGame,
   loadSettings,
   loadStats,
@@ -86,16 +87,7 @@ function AppShell({
   const handleSelectTileTheme = useCallback(
     (theme: TileThemeKey) => {
       Sound.unlock();
-      onUpdateSettings({theme});
-      if (Sound.enabled) Sound.select();
-    },
-    [onUpdateSettings],
-  );
-
-  const handleChangeUiTheme = useCallback(
-    (uiTheme: ThemeSlug) => {
-      Sound.unlock();
-      onUpdateSettings({uiTheme});
+      onUpdateSettings({theme, uiTheme: THEME_UI_MAP[theme]});
       if (Sound.enabled) Sound.select();
     },
     [onUpdateSettings],
@@ -148,7 +140,6 @@ function AppShell({
         onSelectDifficulty={handleSelectDifficulty}
         onToggleGravity={gravity => onUpdateSettings({gravity})}
         onSelectTileTheme={handleSelectTileTheme}
-        onChangeUiTheme={handleChangeUiTheme}
         onChangeColorMode={handleChangeColorMode}
         onToggleBgm={handleToggleBgm}
         onToggleSound={handleToggleSound}
@@ -176,8 +167,7 @@ function AppShell({
       onUpdateStats={onUpdateStats}
       onChangeDifficulty={difficulty => onUpdateSettings({difficulty})}
       onChangeGravity={gravity => onUpdateSettings({gravity})}
-      onChangeTileTheme={theme => onUpdateSettings({theme})}
-      onChangeUiTheme={handleChangeUiTheme}
+      onChangeTileTheme={handleSelectTileTheme}
       onChangeColorMode={handleChangeColorMode}
       onToggleBgm={handleToggleBgm}
       onToggleSound={handleToggleSound}
@@ -267,7 +257,7 @@ export default function App() {
   }, []);
 
   return (
-    <Theme theme={themes[settings.uiTheme]} mode={settings.colorMode}>
+    <Theme theme={themes[THEME_UI_MAP[settings.theme]]} mode={settings.colorMode}>
       <LayerProvider toast={{position: 'bottomEnd', maxVisible: 2}}>
         <AppShell
           settings={settings}
