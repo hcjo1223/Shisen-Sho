@@ -36,6 +36,7 @@ export interface BoardInstance {
   tryMatch(a: Coord, b: Coord): PathResult | null;
   undo(): {a: Coord; b: Coord; value: number} | null;
   shuffle(): void;
+  applyGravity(): Array<{from: Coord; to: Coord; value: number}>;
 }
 
 export interface BoardConstructor {

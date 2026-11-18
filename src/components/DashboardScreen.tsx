@@ -150,12 +150,13 @@ export function DashboardScreen({
                     {DIFFICULTY_ORDER.map(diffKey => {
                       const meta = DIFFICULTY_META[diffKey];
                       const bestMs = getBestMs(diffKey);
+                      const gravityBestMs = getBestMs(diffKey, true);
                       return (
                         <ListItem
                           key={diffKey}
                           startContent={<Text size="lg">{meta.icon}</Text>}
                           label={meta.name}
-                          description={`${meta.tiles}개 타일 (${meta.gridLabel})`}
+                          description={`${meta.tiles}개 타일 (${meta.gridLabel}) · ⬇️ 중력 ${formatTime(gravityBestMs)}`}
                           endContent={
                             <Token
                               color={bestMs > 0 ? 'orange' : 'gray'}

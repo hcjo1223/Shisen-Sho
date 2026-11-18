@@ -145,6 +145,7 @@ function AppShell({
         onResumeGame={handleResumeGame}
         onStartDaily={handleStartDaily}
         onSelectDifficulty={handleSelectDifficulty}
+        onToggleGravity={gravity => onUpdateSettings({gravity})}
         onSelectTileTheme={handleSelectTileTheme}
         onChangeUiTheme={handleChangeUiTheme}
         onChangeColorMode={handleChangeColorMode}
@@ -173,6 +174,7 @@ function AppShell({
       stats={stats}
       onUpdateStats={onUpdateStats}
       onChangeDifficulty={difficulty => onUpdateSettings({difficulty})}
+      onChangeGravity={gravity => onUpdateSettings({gravity})}
       onChangeTileTheme={theme => onUpdateSettings({theme})}
       onChangeUiTheme={handleChangeUiTheme}
       onChangeColorMode={handleChangeColorMode}

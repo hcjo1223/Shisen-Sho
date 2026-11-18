@@ -99,6 +99,31 @@
     }
 
     /**
+     * 중력 모드: 각 열에서 빈 칸 위의 타일을 아래(행 번호가 큰 쪽)로 떨어뜨린다.
+     * 패딩 줄(0행·마지막 행)은 그대로 비워 둔다.
+     * @returns {{from: {r:number,c:number}, to: {r:number,c:number}, value: number}[]} 움직인 타일 목록
+     */
+    applyGravity() {
+      const moves = [];
+      for (let c = 1; c <= this.cols; c++) {
+        let write = this.rows; // 다음 타일이 놓일 가장 아래 칸
+        for (let r = this.rows; r >= 1; r--) {
+          const v = this.grid[r][c];
+          if (v === 0) continue;
+          if (r !== write) {
+            this.grid[write][c] = v;
+            this.grid[r][c] = 0;
+            moves.push({ from: { r, c }, to: { r: write, c }, value: v });
+          }
+          write--;
+        }
+      }
+      // 위치가 바뀌었으므로 되돌리기 기록은 무의미해진다
+      if (moves.length) this.history = [];
+      return moves;
+    }
+
+    /**
      * 남은 타일의 위치는 그대로 두고 내용물만 섞는다.
      * 맞출 짝이 생길 때까지 반복.
      */
