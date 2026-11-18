@@ -7199,3 +7199,39 @@
     }
   }
 }
+
+@layer product {
+  @layer priority1 {
+    .x9f619 {
+      box-sizing: border-box;
+    }
+  }
+
+  @layer priority2 {
+    .x1a148e8 {
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    .x196z7tn {
+      padding-left: env(safe-area-inset-left, 0px);
+    }
+
+    .xg4jtgg {
+      padding-right: env(safe-area-inset-right, 0px);
+    }
+
+    .x1mrd0q {
+      padding-top: env(safe-area-inset-top, 0px);
+    }
+
+    @media (display-mode: standalone) {
+      .xrdy3b9.xrdy3b9 {
+        padding-bottom: max(env(safe-area-inset-bottom, 0px),var(--spacing-3));
+      }
+
+      .x5ady9u.x5ady9u {
+        padding-top: calc(env(safe-area-inset-top, 0px) + var(--spacing-3));
+      }
+    }
+  }
+}

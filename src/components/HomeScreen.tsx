@@ -57,6 +57,7 @@ import {
   loadDailyRecords,
   todayKey,
 } from '../utils/daily';
+import {safeAreaStyles} from '../styles/safeArea';
 
 export interface HomeScreenProps {
   settings: GameSettings;
@@ -111,7 +112,7 @@ export function HomeScreen({
   };
 
   return (
-    <VStack height="100dvh">
+    <VStack height="100dvh" xstyle={safeAreaStyles.screen}>
       <Layout
         height="fill"
         contentWidth={620}
