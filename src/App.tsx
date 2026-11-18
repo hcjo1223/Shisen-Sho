@@ -1,8 +1,9 @@
-import {useCallback, useEffect, useState} from 'react';
+import {useCallback, useEffect, useRef, useState} from 'react';
 import {LayerProvider} from '@astryxdesign/core/Layer';
 import {Theme} from '@astryxdesign/core/theme';
 import {useToast} from '@astryxdesign/core/Toast';
 import {themes, type ThemeSlug} from './astryx-themes';
+import {applyPendingUpdate, initPwaUpdate} from './utils/pwaUpdate';
 import {DashboardScreen} from './components/DashboardScreen';
 import {GameScreen} from './components/GameScreen';
 import {HomeScreen} from './components/HomeScreen';
@@ -191,13 +192,22 @@ export default function App() {
   const [screen, setScreen] = useState<ScreenName>('home');
   const [gameEntry, setGameEntry] = useState<GameEntry>('new');
 
+  const screenRef = useRef<ScreenName>(screen);
+  screenRef.current = screen;
+
   const handleNavigate = useCallback(
     (nextScreen: ScreenName, entry: GameEntry = 'new') => {
       if (nextScreen === 'game') setGameEntry(entry);
       setScreen(nextScreen);
+      // 게임 화면을 벗어날 때(판은 이미 저장됨) 받아 둔 새 버전을 적용
+      if (nextScreen !== 'game') applyPendingUpdate();
     },
     [],
   );
+
+  useEffect(() => {
+    initPwaUpdate(() => screenRef.current !== 'game');
+  }, []);
   const [settings, setSettings] = useState<GameSettings>(() => {
     const initial = loadSettings();
     Sound.enabled = initial.sound;
