@@ -2,7 +2,7 @@
  * 숲속 동물 초원 (Meadow Animal) Astryx Theme
  *
  * 포근한 클로버 그린 액센트와 세이지-허니 크림 뉴트럴,
- * Jua 디스플레이·제목 서체와 Gowun Dodum 본문 서체로 구성한 동물 친구들 전용 테마.
+ * Jua 디스플레이·제목 서체와 다중 굵기(400~700) Noto Sans KR 본문 서체로 구성한 동물 친구들 전용 테마.
  */
 
 import {defineTheme, defineSyntaxTheme} from '@astryxdesign/core/theme';
@@ -52,14 +52,22 @@ export const meadowTheme = defineTheme({
   typography: {
     scale: {base: 14, ratio: 1.2},
     body: {
-      family: 'Gowun Dodum',
+      family: 'Noto Sans KR',
       fallbacks:
-        'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        '"Apple SD Gothic Neo", "Malgun Gothic", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     },
     heading: {
       family: 'Jua',
-      fallbacks: '"Gowun Dodum", system-ui, sans-serif',
-      weights: {1: 'normal', 2: 'normal', 3: 'normal', 4: 'normal'},
+      fallbacks:
+        '"Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif',
+      weights: {
+        1: 'normal',
+        2: 'normal',
+        3: 'normal',
+        4: 'normal',
+        5: 'normal',
+        6: 'normal',
+      },
     },
     code: {
       family: 'JetBrains Mono',
@@ -239,10 +247,28 @@ export const meadowTheme = defineTheme({
   },
 
   components: {
+    text: {
+      base: {
+        wordBreak: 'keep-all',
+        overflowWrap: 'break-word',
+      },
+    },
+    heading: {
+      base: {
+        fontWeight: 'var(--font-weight-normal)',
+        fontSynthesis: 'none',
+        wordBreak: 'keep-all',
+        overflowWrap: 'break-word',
+      },
+    },
     button: {
       base: {
         borderRadius: '9999px',
         fontFamily: 'var(--font-family-heading)',
+        fontWeight: 'var(--font-weight-normal)',
+        fontSynthesis: 'none',
+        wordBreak: 'keep-all',
+        overflowWrap: 'break-word',
       },
       'variant:primary': {
         boxShadow: `0 3px 0 ${lightDark(accent.light[25], accent.dark[55])}, 0 6px 14px ${lightDark(withAlpha(accent.light[40], '38'), withAlpha(neutral.dark[0], '45'))}`,
@@ -254,6 +280,48 @@ export const meadowTheme = defineTheme({
         borderColor: 'var(--color-border-emphasized)',
         color: 'var(--color-text-primary)',
         boxShadow: `0 2px 0 ${lightDark(neutral.light[85], neutral.dark[25])}`,
+      },
+    },
+    'switch-field': {
+      base: {
+        wordBreak: 'keep-all',
+        overflowWrap: 'break-word',
+      },
+    },
+    'switch-label': {
+      base: {
+        wordBreak: 'keep-all',
+        overflowWrap: 'break-word',
+      },
+    },
+    item: {
+      base: {
+        wordBreak: 'keep-all',
+        overflowWrap: 'break-word',
+      },
+    },
+    'dialog-header': {
+      base: {
+        wordBreak: 'keep-all',
+        overflowWrap: 'break-word',
+      },
+    },
+    selector: {
+      base: {
+        wordBreak: 'keep-all',
+        overflowWrap: 'break-word',
+      },
+    },
+    'selector-option-row': {
+      base: {
+        wordBreak: 'keep-all',
+        overflowWrap: 'break-word',
+      },
+    },
+    'segmented-control-item': {
+      base: {
+        wordBreak: 'keep-all',
+        overflowWrap: 'break-word',
       },
     },
     card: {

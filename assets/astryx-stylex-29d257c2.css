@@ -7226,6 +7226,10 @@
     .x9f619 {
       box-sizing: border-box;
     }
+
+    .x2lah0s {
+      flex-shrink: 0;
+    }
   }
 
   @layer priority2 {

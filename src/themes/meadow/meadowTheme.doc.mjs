@@ -4,6 +4,6 @@ export default {
   name: 'meadow',
   displayName: '숲속 동물 초원',
   description:
-    'Fresh clover-meadow greens and warm honey-sage surfaces paired with Jua + Gowun Dodum typography for the Animal Friends puzzle theme.',
+    'Fresh clover-meadow greens and warm honey-sage surfaces paired with Jua + Noto Sans KR typography for the Animal Friends puzzle theme.',
   maintained: false,
 };

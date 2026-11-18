@@ -28,6 +28,7 @@ import {
   LayoutContent,
   LayoutFooter,
   LayoutHeader,
+  StackItem,
   VStack,
 } from '@astryxdesign/core/Layout';
 import {
@@ -85,6 +86,7 @@ import {
   transposeGrid,
 } from '../utils/daily';
 import {shareResult, type ShareInfo} from '../utils/shareCard';
+import {layoutStyles} from '../styles/layout';
 import {safeAreaStyles} from '../styles/safeArea';
 
 export interface GameScreenProps {
@@ -508,7 +510,9 @@ export function GameScreen({
       const board = boardRef.current;
       if (!board || finishedRef.current || pausedRef.current) return;
       Sound.unlock();
-      controllerRef.current?.clearHints();
+      if (!controllerRef.current?.isHintCoord(p)) {
+        controllerRef.current?.clearHints();
+      }
       dirtyRef.current = true;
       const cur = selectedRef.current;
 
@@ -548,6 +552,7 @@ export function GameScreen({
       lastMatchRef.current = now;
       selectedRef.current = null;
 
+      controllerRef.current?.clearHints();
       controllerRef.current?.drawPath(path.points);
       controllerRef.current?.removeTiles(cur, p, nextCombo);
       if (gravityRef.current) {
@@ -602,6 +607,11 @@ export function GameScreen({
   const handleHint = useCallback(() => {
     const board = boardRef.current;
     if (!board || finishedRef.current) return;
+    if (controllerRef.current?.hasActiveHint()) {
+      controllerRef.current.pulseHint();
+      if (Sound.enabled) Sound.hint();
+      return;
+    }
     if (hintsLeftRef.current <= 0) {
       showToast('힌트를 모두 사용했어요! (최대 5회) 💡');
       return;
@@ -777,7 +787,11 @@ export function GameScreen({
       } else if (e.key === 'm' || e.key === 'M') {
         onToggleBgm(!settingsRef.current.bgm);
       } else if (e.key === 'Escape') {
-        deselect();
+        if (selectedRef.current) {
+          deselect();
+        } else {
+          controllerRef.current?.clearHints();
+        }
       }
     };
 
@@ -813,58 +827,68 @@ export function GameScreen({
       <Layout
         height="fill"
         header={
-          <LayoutHeader hasDivider padding={1}>
+          <LayoutHeader hasDivider padding={1.5}>
             <HStack justify="between" align="center" gap={1}>
-              <IconButton
-                label="홈으로 (진행 상황은 자동 저장돼요)"
-                icon={<Icon icon={Home} size="sm" />}
-                variant="secondary"
-                size="sm"
-                onClick={handleBackHome}
-              />
+              <StackItem size="static">
+                <IconButton
+                  label="홈으로 (진행 상황은 자동 저장돼요)"
+                  icon={<Icon icon={Home} size="sm" />}
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleBackHome}
+                />
+              </StackItem>
 
-              <Card padding={1}>
-                <HStack gap={2} align="center">
-                  {mode === 'daily' && (
-                    <Text size="sm">🗓️</Text>
-                  )}
-                  {gravityOn && <Text size="sm">⬇️</Text>}
-                  <HStack gap={1} align="center">
-                    <Text type="supporting" size="xsm">
-                      남은
-                    </Text>
-                    <Text size="sm" weight="bold" hasTabularNumbers>
-                      {remaining}
-                    </Text>
-                  </HStack>
+              <StackItem size="fill">
+                <Center>
+                  <Card padding={1} maxWidth="100%">
+                    <HStack gap={1} align="center" justify="center" wrap="wrap">
+                      {(mode === 'daily' || gravityOn) && (
+                        <HStack gap={0.5} align="center">
+                          {mode === 'daily' && <Text size="xsm">🗓️</Text>}
+                          {gravityOn && <Text size="xsm">⬇️</Text>}
+                        </HStack>
+                      )}
+                      <HStack gap={0.5} align="center">
+                        <Text type="supporting" size="xsm">
+                          남은
+                        </Text>
+                        <Text size="sm" weight="bold" hasTabularNumbers>
+                          {remaining}
+                        </Text>
+                      </HStack>
 
-                  <HStack gap={1} align="center">
-                    <Text type="supporting" size="xsm">
-                      시간
-                    </Text>
-                    <Text size="sm" weight="bold" hasTabularNumbers>
-                      {formatTimerClock(elapsedMs)}
-                    </Text>
-                  </HStack>
+                      <HStack gap={0.5} align="center">
+                        <Text type="supporting" size="xsm">
+                          시간
+                        </Text>
+                        <Text size="sm" weight="bold" hasTabularNumbers>
+                          {formatTimerClock(elapsedMs)}
+                        </Text>
+                      </HStack>
 
-                  <HStack gap={1} align="center">
-                    <Text type="supporting" size="xsm">
-                      {mode === 'daily' ? '오늘' : '최고'}
-                    </Text>
-                    <Text size="sm" weight="bold" hasTabularNumbers>
-                      {formatTime(bestMs)}
-                    </Text>
-                  </HStack>
-                </HStack>
-              </Card>
+                      <HStack gap={0.5} align="center">
+                        <Text type="supporting" size="xsm">
+                          {mode === 'daily' ? '오늘' : '최고'}
+                        </Text>
+                        <Text size="sm" weight="bold" hasTabularNumbers>
+                          {formatTime(bestMs)}
+                        </Text>
+                      </HStack>
+                    </HStack>
+                  </Card>
+                </Center>
+              </StackItem>
 
-              <IconButton
-                label="게임 설정"
-                icon={<Icon icon={Settings} size="sm" />}
-                variant="secondary"
-                size="sm"
-                onClick={() => setIsSettingsOpen(true)}
-              />
+              <StackItem size="static">
+                <IconButton
+                  label="게임 설정"
+                  icon={<Icon icon={Settings} size="sm" />}
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setIsSettingsOpen(true)}
+                />
+              </StackItem>
             </HStack>
           </LayoutHeader>
         }
@@ -878,7 +902,7 @@ export function GameScreen({
         footer={
           <LayoutFooter hasDivider padding={1.5}>
             <Center>
-              <HStack gap={2} align="center" justify="center" wrap="wrap">
+              <HStack gap={1.5} align="center" justify="center" wrap="wrap">
                 <Button
                   label="힌트"
                   variant="secondary"
@@ -947,23 +971,27 @@ export function GameScreen({
                   size="lg"
                   color="orange"
                   label={`클리어 시간 ${formatTimerClock(clearInfo?.elapsedMs ?? 0)}`}
+                  xstyle={layoutStyles.noShrink}
                 />
                 <HStack gap={1} hAlign="center" wrap="wrap">
                   <Token
                     size="sm"
                     color="yellow"
                     label={`💡 힌트 ${clearInfo?.share.hintsUsed ?? 0}회`}
+                    xstyle={layoutStyles.noShrink}
                   />
                   <Token
                     size="sm"
                     color="pink"
                     label={`🔥 최대 콤보 ${clearInfo?.share.maxCombo ?? 0}`}
+                    xstyle={layoutStyles.noShrink}
                   />
                   {typeof clearInfo?.share.streak === 'number' && (
                     <Token
                       size="sm"
                       color="green"
                       label={`🗓️ ${clearInfo.share.streak}일 연속`}
+                      xstyle={layoutStyles.noShrink}
                     />
                   )}
                 </HStack>
@@ -983,7 +1011,7 @@ export function GameScreen({
           }
           footer={
             <LayoutFooter hasDivider>
-              <HStack gap={2} justify="end" width="100%">
+              <HStack gap={1.5} justify="end" width="100%" wrap="wrap">
                 <Button
                   label="기록 보기"
                   variant="secondary"

@@ -9,6 +9,7 @@ import {
   Layout,
   LayoutContent,
   LayoutHeader,
+  StackItem,
   VStack,
 } from '@astryxdesign/core/Layout';
 import {List, ListItem} from '@astryxdesign/core/List';
@@ -30,6 +31,7 @@ import {
   longestStreak,
   todayKey,
 } from '../utils/daily';
+import {layoutStyles} from '../styles/layout';
 import {safeAreaStyles} from '../styles/safeArea';
 
 export interface DashboardScreenProps {
@@ -59,19 +61,27 @@ export function DashboardScreen({
         header={
           <LayoutHeader hasDivider padding={3}>
             <HStack justify="between" align="center" gap={2}>
-              <IconButton
-                label="홈으로"
-                icon={<Icon icon={Home} size="md" />}
-                variant="secondary"
-                onClick={onBackHome}
-              />
-              <Heading level={2}>나의 플레이 대시보드</Heading>
-              <IconButton
-                label="게임 시작"
-                icon={<Icon icon={Play} size="md" />}
-                variant="primary"
-                onClick={onStartGame}
-              />
+              <StackItem size="static">
+                <IconButton
+                  label="홈으로"
+                  icon={<Icon icon={Home} size="md" />}
+                  variant="secondary"
+                  onClick={onBackHome}
+                />
+              </StackItem>
+              <StackItem size="fill">
+                <Heading level={2} justify="center">
+                  나의 플레이 대시보드
+                </Heading>
+              </StackItem>
+              <StackItem size="static">
+                <IconButton
+                  label="게임 시작"
+                  icon={<Icon icon={Play} size="md" />}
+                  variant="primary"
+                  onClick={onStartGame}
+                />
+              </StackItem>
             </HStack>
           </LayoutHeader>
         }
@@ -156,12 +166,17 @@ export function DashboardScreen({
                         <ListItem
                           key={diffKey}
                           startContent={<Text size="lg">{meta.icon}</Text>}
-                          label={meta.name}
-                          description={`${meta.tiles}개 타일 (${meta.gridLabel}) · ⬇️ 중력 ${formatTime(gravityBestMs)}`}
+                          label={<Text weight="semibold">{meta.name}</Text>}
+                          description={
+                            <Text type="supporting" size="sm">
+                              {`${meta.tiles}개 타일 (${meta.gridLabel}) · ⬇️ 중력 ${formatTime(gravityBestMs)}`}
+                            </Text>
+                          }
                           endContent={
                             <Token
                               color={bestMs > 0 ? 'orange' : 'gray'}
                               label={formatTime(bestMs)}
+                              xstyle={layoutStyles.noShrink}
                             />
                           }
                         />
@@ -177,32 +192,47 @@ export function DashboardScreen({
                   <List edge="bleed" hasDividers density="balanced">
                     <ListItem
                       startContent={<Text size="lg">🗓️</Text>}
-                      label={`오늘 (${formatDailyLabel(today)})`}
+                      label={<Text>{`오늘 (${formatDailyLabel(today)})`}</Text>}
                       endContent={
                         <Token
                           color={todayRecord ? 'green' : 'gray'}
                           label={todayRecord ? formatTime(todayRecord.bestMs) : '아직 도전 전'}
+                          xstyle={layoutStyles.noShrink}
                         />
                       }
                     />
                     <ListItem
                       startContent={<Text size="lg">🔥</Text>}
-                      label="현재 연속"
+                      label={<Text>현재 연속</Text>}
                       endContent={
-                        <Token color="orange" label={`${currentStreak(dailyRecords, today)}일`} />
+                        <Token
+                          color="orange"
+                          label={`${currentStreak(dailyRecords, today)}일`}
+                          xstyle={layoutStyles.noShrink}
+                        />
                       }
                     />
                     <ListItem
                       startContent={<Text size="lg">🌈</Text>}
-                      label="최장 연속"
+                      label={<Text>최장 연속</Text>}
                       endContent={
-                        <Token color="purple" label={`${longestStreak(dailyRecords)}일`} />
+                        <Token
+                          color="purple"
+                          label={`${longestStreak(dailyRecords)}일`}
+                          xstyle={layoutStyles.noShrink}
+                        />
                       }
                     />
                     <ListItem
                       startContent={<Text size="lg">✅</Text>}
-                      label="챌린지 클리어한 날"
-                      endContent={<Token color="gray" label={`${dailyDays}일`} />}
+                      label={<Text>챌린지 클리어한 날</Text>}
+                      endContent={
+                        <Token
+                          color="gray"
+                          label={`${dailyDays}일`}
+                          xstyle={layoutStyles.noShrink}
+                        />
+                      }
                     />
                   </List>
                 </VStack>
@@ -210,12 +240,13 @@ export function DashboardScreen({
 
               <Card padding={3}>
                 <VStack gap={2}>
-                  <HStack justify="between" align="center" gap={2}>
+                  <HStack justify="between" align="center" gap={2} wrap="wrap">
                     <Heading level={3}>달성 업적</Heading>
                     <Token
                       size="sm"
                       color="green"
                       label={`${unlockedCount} / ${BADGES.length}`}
+                      xstyle={layoutStyles.noShrink}
                     />
                   </HStack>
 

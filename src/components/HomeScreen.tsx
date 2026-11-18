@@ -22,6 +22,7 @@ import {
   Layout,
   LayoutContent,
   LayoutFooter,
+  StackItem,
   VStack,
 } from '@astryxdesign/core/Layout';
 import {
@@ -56,6 +57,7 @@ import {
   loadDailyRecords,
   todayKey,
 } from '../utils/daily';
+import {layoutStyles} from '../styles/layout';
 import {safeAreaStyles} from '../styles/safeArea';
 
 export interface HomeScreenProps {
@@ -137,7 +139,12 @@ export function HomeScreen({
                       />
                     ))}
                   </HStack>
-                  <Text type="supporting" color="accent" weight="semibold" size="sm">
+                  <Text
+                    type="supporting"
+                    color="accent"
+                    weight="semibold"
+                    size="sm"
+                    justify="center">
                     {activeThemeMeta.tagline}
                   </Text>
                   <Heading level={1} type="display-2" justify="center">
@@ -151,44 +158,53 @@ export function HomeScreen({
 
               {savedGame && savedMeta && (
                 <Card padding={2} elevation="low">
-                  <HStack justify="between" align="center" gap={2} wrap="wrap">
-                    <VStack gap={0.5}>
+                  <VStack gap={0.5}>
+                    <HStack justify="between" align="center" gap={1.5} wrap="wrap">
                       <Heading level={2}>하던 판이 있어요</Heading>
-                      <Text type="supporting" size="sm">
-                        {`${savedIsDaily ? '🗓️ 오늘의 챌린지' : `${savedMeta.icon} ${savedMeta.name}`} · 남은 ${savedRemaining}개 · ${formatTimerClock(savedGame.elapsedMs)}`}
-                      </Text>
-                    </VStack>
-                    <Token
-                      size="sm"
-                      color="orange"
-                      label={`${Math.round((1 - savedRemaining / savedMeta.tiles) * 100)}% 진행`}
-                    />
-                  </HStack>
+                      <Token
+                        size="sm"
+                        color="orange"
+                        label={`${Math.round((1 - savedRemaining / savedMeta.tiles) * 100)}% 진행`}
+                        xstyle={layoutStyles.noShrink}
+                      />
+                    </HStack>
+                    <Text type="supporting" size="sm">
+                      {`${savedIsDaily ? '🗓️ 오늘의 챌린지' : `${savedMeta.icon} ${savedMeta.name}`} · 남은 ${savedRemaining}개 · ${formatTimerClock(savedGame.elapsedMs)}`}
+                    </Text>
+                  </VStack>
                 </Card>
               )}
 
               <Card padding={2}>
                 <VStack gap={1.5}>
-                  <HStack justify="between" align="center" gap={2} wrap="wrap">
-                    <VStack gap={0.5}>
+                  <VStack gap={0.5}>
+                    <HStack justify="between" align="center" gap={1.5} wrap="wrap">
                       <Heading level={2}>🗓️ 오늘의 챌린지</Heading>
-                      <Text type="supporting" size="sm">
-                        {`${formatDailyLabel(today)} · ${dailyMeta.icon} ${dailyMeta.name} ${dailyMeta.tiles}개 · 오늘은 모두 같은 판`}
-                      </Text>
-                    </VStack>
-                    <HStack gap={1} align="center" wrap="wrap">
-                      {todayRecord && (
-                        <Token
-                          size="sm"
-                          color="green"
-                          label={`완료 ${formatTime(todayRecord.bestMs)}`}
-                        />
-                      )}
-                      {streak > 0 && (
-                        <Token size="sm" color="orange" label={`🔥 ${streak}일 연속`} />
+                      {(todayRecord || streak > 0) && (
+                        <HStack gap={1} align="center" wrap="wrap">
+                          {todayRecord && (
+                            <Token
+                              size="sm"
+                              color="green"
+                              label={`완료 ${formatTime(todayRecord.bestMs)}`}
+                              xstyle={layoutStyles.noShrink}
+                            />
+                          )}
+                          {streak > 0 && (
+                            <Token
+                              size="sm"
+                              color="orange"
+                              label={`🔥 ${streak}일 연속`}
+                              xstyle={layoutStyles.noShrink}
+                            />
+                          )}
+                        </HStack>
                       )}
                     </HStack>
-                  </HStack>
+                    <Text type="supporting" size="sm">
+                      {`${formatDailyLabel(today)} · ${dailyMeta.icon} ${dailyMeta.name} ${dailyMeta.tiles}개 · 오늘은 모두 같은 판`}
+                    </Text>
+                  </VStack>
                   <Button
                     label={
                       savedIsDaily
@@ -207,7 +223,7 @@ export function HomeScreen({
 
               <Card padding={2}>
                 <VStack gap={1.5}>
-                  <HStack justify="between" align="center" gap={2} wrap="wrap">
+                  <HStack justify="between" align="center" gap={1.5} wrap="wrap">
                     <Heading level={2}>난이도 선택</Heading>
                     <Text type="supporting" size="sm">
                       세로·가로 화면 자동 맞춤
@@ -228,26 +244,40 @@ export function HomeScreen({
                           variant="default"
                           elevation={isActive ? 'low' : 'none'}
                           padding={2}>
-                          <HStack justify="between" align="center" gap={2}>
-                            <HStack gap={2} align="center">
+                          <HStack align="center" gap={2}>
+                            <StackItem size="static">
                               <Text size="xl">{meta.icon}</Text>
+                            </StackItem>
+                            <StackItem size="fill">
                               <VStack gap={0.5}>
-                                <HStack gap={1} align="center">
-                                  <Text weight="semibold">{meta.name}</Text>
-                                  {isActive && (
-                                    <Token size="sm" color="orange" label="선택됨" />
-                                  )}
+                                <HStack
+                                  justify="between"
+                                  align="center"
+                                  gap={1.5}
+                                  wrap="wrap">
+                                  <HStack gap={1} align="center" wrap="wrap">
+                                    <Text weight="semibold">{meta.name}</Text>
+                                    {isActive && (
+                                      <Token
+                                        size="sm"
+                                        color="orange"
+                                        label="선택됨"
+                                        xstyle={layoutStyles.noShrink}
+                                      />
+                                    )}
+                                  </HStack>
+                                  <Token
+                                    size="sm"
+                                    color={isActive ? 'orange' : 'gray'}
+                                    label={`최고 ${best}`}
+                                    xstyle={layoutStyles.noShrink}
+                                  />
                                 </HStack>
                                 <Text type="supporting" size="sm">
                                   {meta.desc}
                                 </Text>
                               </VStack>
-                            </HStack>
-                            <Token
-                              size="sm"
-                              color={isActive ? 'orange' : 'gray'}
-                              label={`최고 ${best}`}
-                            />
+                            </StackItem>
                           </HStack>
                         </SelectableCard>
                       );
@@ -269,19 +299,20 @@ export function HomeScreen({
 
               <Card padding={2}>
                 <VStack gap={1.5}>
-                  <HStack justify="between" align="center" gap={2} wrap="wrap">
-                    <VStack gap={0.5}>
+                  <VStack gap={0.5}>
+                    <HStack justify="between" align="center" gap={1.5} wrap="wrap">
                       <Heading level={2}>게임 테마</Heading>
-                      <Text type="supporting" size="sm">
-                        선택한 테마에 맞춰 타일과 UI 분위기가 함께 바뀌어요
-                      </Text>
-                    </VStack>
-                    <Token
-                      size="sm"
-                      color={activeThemeMeta.badgeColor}
-                      label={activeThemeMeta.uiLabel}
-                    />
-                  </HStack>
+                      <Token
+                        size="sm"
+                        color={activeThemeMeta.badgeColor}
+                        label={activeThemeMeta.uiLabel}
+                        xstyle={layoutStyles.noShrink}
+                      />
+                    </HStack>
+                    <Text type="supporting" size="sm">
+                      선택한 테마에 맞춰 타일과 UI 분위기가 함께 바뀌어요
+                    </Text>
+                  </VStack>
 
                   <VStack gap={1.5}>
                     {TILE_THEME_ORDER.map(key => {
@@ -297,9 +328,9 @@ export function HomeScreen({
                           variant="default"
                           elevation={isActive ? 'low' : 'none'}
                           padding={2}>
-                          <HStack justify="between" align="center" gap={2}>
-                            <HStack gap={2} align="center">
-                              <VStack width={56}>
+                          <HStack align="center" gap={2}>
+                            <StackItem size="static">
+                              <VStack width={56} xstyle={layoutStyles.noShrink}>
                                 <AspectRatio ratio={1} fit="contain">
                                   <img
                                     src={THEME_DIORAMA_URLS[key]}
@@ -307,23 +338,37 @@ export function HomeScreen({
                                   />
                                 </AspectRatio>
                               </VStack>
+                            </StackItem>
+                            <StackItem size="fill">
                               <VStack gap={0.5}>
-                                <HStack gap={1} align="center" wrap="wrap">
-                                  <Text weight="semibold">{tileTheme.name}</Text>
-                                  <Token
-                                    size="sm"
-                                    color={meta.badgeColor}
-                                    label={meta.badge}
-                                  />
+                                <HStack
+                                  justify="between"
+                                  align="center"
+                                  gap={1.5}
+                                  wrap="wrap">
+                                  <HStack gap={1} align="center" wrap="wrap">
+                                    <Text weight="semibold">{tileTheme.name}</Text>
+                                    <Token
+                                      size="sm"
+                                      color={meta.badgeColor}
+                                      label={meta.badge}
+                                      xstyle={layoutStyles.noShrink}
+                                    />
+                                  </HStack>
+                                  {isActive && (
+                                    <Token
+                                      size="sm"
+                                      color="orange"
+                                      label="적용됨"
+                                      xstyle={layoutStyles.noShrink}
+                                    />
+                                  )}
                                 </HStack>
                                 <Text type="supporting" size="sm">
                                   {meta.subtitle}
                                 </Text>
                               </VStack>
-                            </HStack>
-                            {isActive && (
-                              <Token size="sm" color="orange" label="적용됨" />
-                            )}
+                            </StackItem>
                           </HStack>
                         </SelectableCard>
                       );
@@ -334,15 +379,20 @@ export function HomeScreen({
 
               <Card padding={2}>
                 <VStack gap={2}>
-                  <HStack justify="between" align="center" gap={2} wrap="wrap">
-                    <VStack gap={0.5}>
+                  <VStack gap={0.5}>
+                    <HStack justify="between" align="center" gap={1.5} wrap="wrap">
                       <Heading level={3}>화면 &amp; 사운드 설정</Heading>
-                      <Text type="supporting" size="sm">
-                        {`${THEMES[settings.theme].name} · ${activeThemeMeta.uiLabel} 테마 적용 중`}
-                      </Text>
-                    </VStack>
-                    <Token size="sm" color="pink" label="Astryx Design" />
-                  </HStack>
+                      <Token
+                        size="sm"
+                        color="pink"
+                        label="Astryx Design"
+                        xstyle={layoutStyles.noShrink}
+                      />
+                    </HStack>
+                    <Text type="supporting" size="sm">
+                      {`${THEMES[settings.theme].name} · ${activeThemeMeta.uiLabel} 테마 적용 중`}
+                    </Text>
+                  </VStack>
 
                   <VStack gap={1}>
                     <Text type="label" weight="medium">
@@ -399,21 +449,25 @@ export function HomeScreen({
           <LayoutFooter hasDivider padding={2}>
             <Center>
               {savedGame ? (
-                <HStack gap={2} width="100%" maxWidth={620} justify="center">
-                  <IconButton
-                    label="대시보드"
-                    variant="secondary"
-                    size="lg"
-                    icon={<Icon icon={BarChart3} size="sm" />}
-                    onClick={onOpenDashboard}
-                  />
-                  <Button
-                    label="새 게임"
-                    variant="secondary"
-                    size="lg"
-                    icon={<Icon icon={RotateCcw} size="sm" />}
-                    onClick={() => setPendingStart('classic')}
-                  />
+                <HStack gap={1.5} width="100%" maxWidth={620} justify="center">
+                  <StackItem size="static">
+                    <IconButton
+                      label="대시보드"
+                      variant="secondary"
+                      size="lg"
+                      icon={<Icon icon={BarChart3} size="sm" />}
+                      onClick={onOpenDashboard}
+                    />
+                  </StackItem>
+                  <StackItem size="static">
+                    <Button
+                      label="새 게임"
+                      variant="secondary"
+                      size="lg"
+                      icon={<Icon icon={RotateCcw} size="sm" />}
+                      onClick={() => setPendingStart('classic')}
+                    />
+                  </StackItem>
                   <Button
                     label="이어하기"
                     variant="primary"
@@ -424,14 +478,16 @@ export function HomeScreen({
                   />
                 </HStack>
               ) : (
-                <HStack gap={2} width="100%" maxWidth={620} justify="center">
-                  <Button
-                    label="대시보드"
-                    variant="secondary"
-                    size="lg"
-                    icon={<Icon icon={BarChart3} size="sm" />}
-                    onClick={onOpenDashboard}
-                  />
+                <HStack gap={1.5} width="100%" maxWidth={620} justify="center">
+                  <StackItem size="static">
+                    <Button
+                      label="대시보드"
+                      variant="secondary"
+                      size="lg"
+                      icon={<Icon icon={BarChart3} size="sm" />}
+                      onClick={onOpenDashboard}
+                    />
+                  </StackItem>
                   <Button
                     label="게임 시작"
                     variant="primary"

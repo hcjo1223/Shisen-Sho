@@ -109,7 +109,7 @@ export async function renderShareCard(
 
   const colors = resolveTokenColors(host);
   const heading = readFont(host, '--font-family-heading', '"Jua", sans-serif');
-  const body = readFont(host, '--font-family-body', '"Gowun Dodum", sans-serif');
+  const body = readFont(host, '--font-family-body', '"Noto Sans KR", sans-serif');
   if (document.fonts?.ready) {
     await document.fonts.ready.catch(() => undefined);
   }

@@ -42,10 +42,10 @@ export const malangTheme = {
     "--text-heading-4-weight": "var(--font-weight-normal)",
     "--text-heading-4-leading": "1.4286",
     "--text-heading-5-size": "var(--font-size-sm)",
-    "--text-heading-5-weight": "var(--font-weight-semibold)",
+    "--text-heading-5-weight": "var(--font-weight-normal)",
     "--text-heading-5-leading": "1.6667",
     "--text-heading-6-size": "var(--font-size-xs)",
-    "--text-heading-6-weight": "var(--font-weight-semibold)",
+    "--text-heading-6-weight": "var(--font-weight-normal)",
     "--text-heading-6-leading": "1.6",
     "--text-body-size": "var(--font-size-base)",
     "--text-body-weight": "var(--font-weight-normal)",
@@ -99,8 +99,8 @@ export const malangTheme = {
     "--_astryx-motion-tempo": "0.95",
     "--ease-entrance": "cubic-bezier(0.3, 1.2, 0.5, 1)",
     "--ease-move": "cubic-bezier(0.3, 1.2, 0.5, 1)",
-    "--font-family-body": "\"Gowun Dodum\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
-    "--font-family-heading": "Jua, \"Gowun Dodum\", system-ui, sans-serif",
+    "--font-family-body": "\"Noto Sans KR\", \"Apple SD Gothic Neo\", \"Malgun Gothic\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+    "--font-family-heading": "Jua, \"Noto Sans KR\", \"Apple SD Gothic Neo\", system-ui, sans-serif",
     "--font-family-code": "\"JetBrains Mono\", \"SF Mono\", Monaco, Consolas, monospace",
     "--color-syntax-keyword": "light-dark(#512c8d, #c0a8fe)",
     "--color-syntax-string": "light-dark(#005537, #87caa8)",
@@ -275,6 +275,12 @@ export const malangTheme = {
         "fontFamily": "var(--font-family-heading)",
         "fontSize": "var(--text-display-3-size)",
         "lineHeight": "var(--text-display-3-leading)"
+      },
+      "base": {
+        "fontWeight": "var(--font-weight-normal)",
+        "fontSynthesis": "none",
+        "wordBreak": "keep-all",
+        "overflowWrap": "break-word"
       }
     },
     "text": {
@@ -317,12 +323,20 @@ export const malangTheme = {
         "fontFamily": "var(--font-family-heading)",
         "fontSize": "var(--text-display-3-size)",
         "lineHeight": "var(--text-display-3-leading)"
+      },
+      "base": {
+        "wordBreak": "keep-all",
+        "overflowWrap": "break-word"
       }
     },
     "button": {
       "base": {
         "borderRadius": "9999px",
-        "fontFamily": "var(--font-family-heading)"
+        "fontFamily": "var(--font-family-heading)",
+        "fontWeight": "var(--font-weight-normal)",
+        "fontSynthesis": "none",
+        "wordBreak": "keep-all",
+        "overflowWrap": "break-word"
       },
       "variant:primary": {
         "boxShadow": "0 3px 0 light-dark(#82110a, #c85f52), 0 6px 14px light-dark(#d13f3240, #00000045)"
@@ -334,6 +348,48 @@ export const malangTheme = {
         "borderColor": "var(--color-border-emphasized)",
         "color": "var(--color-text-primary)",
         "boxShadow": "0 2px 0 light-dark(#f0d9cf, #42312e)"
+      }
+    },
+    "switch-field": {
+      "base": {
+        "wordBreak": "keep-all",
+        "overflowWrap": "break-word"
+      }
+    },
+    "switch-label": {
+      "base": {
+        "wordBreak": "keep-all",
+        "overflowWrap": "break-word"
+      }
+    },
+    "item": {
+      "base": {
+        "wordBreak": "keep-all",
+        "overflowWrap": "break-word"
+      }
+    },
+    "dialog-header": {
+      "base": {
+        "wordBreak": "keep-all",
+        "overflowWrap": "break-word"
+      }
+    },
+    "selector": {
+      "base": {
+        "wordBreak": "keep-all",
+        "overflowWrap": "break-word"
+      }
+    },
+    "selector-option-row": {
+      "base": {
+        "wordBreak": "keep-all",
+        "overflowWrap": "break-word"
+      }
+    },
+    "segmented-control-item": {
+      "base": {
+        "wordBreak": "keep-all",
+        "overflowWrap": "break-word"
       }
     },
     "card": {
@@ -421,17 +477,19 @@ export const malangTheme = {
         "ratio": 1.2
       },
       "body": {
-        "family": "Gowun Dodum",
-        "fallbacks": "system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        "family": "Noto Sans KR",
+        "fallbacks": "\"Apple SD Gothic Neo\", \"Malgun Gothic\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
       },
       "heading": {
         "family": "Jua",
-        "fallbacks": "\"Gowun Dodum\", system-ui, sans-serif",
+        "fallbacks": "\"Noto Sans KR\", \"Apple SD Gothic Neo\", system-ui, sans-serif",
         "weights": {
           "1": "normal",
           "2": "normal",
           "3": "normal",
-          "4": "normal"
+          "4": "normal",
+          "5": "normal",
+          "6": "normal"
         }
       },
       "code": {

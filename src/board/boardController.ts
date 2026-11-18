@@ -1,4 +1,4 @@
-import type {BoardInstance, Coord} from '../types/game';
+import type {BoardInstance, Coord, TilePair} from '../types/game';
 import {
   THEMES,
   TILE_SPRITE_URLS,
@@ -128,6 +128,7 @@ const BOARD_CSS = `
   }
 
   .shisen-tile.selected {
+    z-index: 3;
     transform: translateY(calc(var(--shisen-cell) * -0.12)) scale(1.04);
     border-color: var(--color-accent, #f2685a);
     background:
@@ -144,9 +145,42 @@ const BOARD_CSS = `
     filter: drop-shadow(0 calc(var(--shisen-cell) * 0.07) calc(var(--shisen-cell) * 0.09) rgba(36, 20, 16, 0.38));
   }
 
-  .shisen-tile.hint {
-    animation: shisen-wiggle 0.6s ease-in-out 3;
-    filter: drop-shadow(0 0 calc(var(--shisen-cell) * 0.14) #ffcf4d);
+  /* 힌트 활성화 시 나머지 타일은 부드럽게 눌러 힌트 쌍을 즉시 눈에 띄게 만든다 */
+  .shisen-board.has-hint .shisen-tile:not(.hint):not(.selected):not(.removing) {
+    opacity: 0.36;
+    filter: saturate(0.32) contrast(0.86);
+    transition: opacity 0.22s ease, filter 0.22s ease, transform 0.12s ease;
+  }
+
+  .shisen-tile.hint,
+  .shisen-tile.is-sprite.hint {
+    z-index: 4;
+    border: max(2px, calc(var(--shisen-cell) * 0.065)) solid #ff6d00;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 238, 173, 0.32) 60%),
+      light-dark(#fffdf2, #584010);
+    box-shadow:
+      inset 0 0 0 max(1.5px, calc(var(--shisen-cell) * 0.04)) rgba(255, 255, 255, 0.96),
+      0 calc(var(--shisen-cell) * 0.09) 0 #d45200,
+      0 0 0 max(2px, calc(var(--shisen-cell) * 0.055)) rgba(255, 255, 255, 0.96),
+      0 0 calc(var(--shisen-cell) * 0.48) calc(var(--shisen-cell) * 0.14) rgba(255, 166, 0, 0.88);
+    animation: shisen-hint-pulse 1.15s ease-in-out infinite;
+  }
+
+  .shisen-tile.hint::after {
+    content: "";
+    position: absolute;
+    inset: calc(var(--shisen-cell) * -0.09);
+    border-radius: calc(var(--shisen-cell) * 0.3);
+    border: max(2.5px, calc(var(--shisen-cell) * 0.07)) solid #ff8c00;
+    box-shadow: 0 0 calc(var(--shisen-cell) * 0.24) rgba(255, 196, 0, 0.85);
+    pointer-events: none;
+    animation: shisen-hint-ring 1.25s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  }
+
+  .shisen-tile.hint .shisen-tile-sprite {
+    transform: scale(1.06);
+    filter: drop-shadow(0 calc(var(--shisen-cell) * 0.06) calc(var(--shisen-cell) * 0.09) rgba(36, 20, 16, 0.42));
   }
 
   .shisen-tile.shake {
@@ -224,6 +258,19 @@ const BOARD_CSS = `
     overflow: visible;
   }
 
+  .shisen-path-layer {
+    z-index: 3;
+  }
+
+  /* 힌트 연결선은 힌트 타일(z-index: 4) 아래, 나머지 보드 위에 그려 그림을 가리지 않는다 */
+  .shisen-path-layer.is-hint {
+    z-index: 2;
+  }
+
+  .shisen-fx-layer {
+    z-index: 5;
+  }
+
   .shisen-path-line {
     fill: none;
     stroke-linecap: round;
@@ -250,6 +297,19 @@ const BOARD_CSS = `
     stroke-width: 0.12;
     stroke-dasharray: 0.01 0.22;
     animation: shisen-dash 0.4s linear infinite;
+  }
+
+  .shisen-path-layer.is-hint .shisen-path-line.glow {
+    stroke: rgba(255, 212, 59, 0.94);
+    stroke-width: 0.36;
+    opacity: 0.85;
+  }
+
+  .shisen-path-layer.is-hint .shisen-path-line.core {
+    stroke: #ff6d00;
+    stroke-width: 0.14;
+    stroke-dasharray: 0.14 0.16;
+    animation: shisen-hint-dash 0.85s linear infinite;
   }
 
   .shisen-path-layer.fade {
@@ -301,15 +361,23 @@ const BOARD_CSS = `
     }
   }
 
-  @keyframes shisen-wiggle {
+  @keyframes shisen-hint-pulse {
     0%, 100% {
-      transform: translateY(calc(var(--shisen-cell) * -0.06)) rotate(0);
+      transform: translateY(calc(var(--shisen-cell) * -0.07)) scale(1.04);
     }
-    25% {
-      transform: translateY(calc(var(--shisen-cell) * -0.1)) rotate(-8deg);
+    50% {
+      transform: translateY(calc(var(--shisen-cell) * -0.15)) scale(1.1);
     }
-    75% {
-      transform: translateY(calc(var(--shisen-cell) * -0.1)) rotate(8deg);
+  }
+
+  @keyframes shisen-hint-ring {
+    0% {
+      opacity: 0.95;
+      transform: scale(0.95);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1.42);
     }
   }
 
@@ -352,6 +420,10 @@ const BOARD_CSS = `
     to { stroke-dashoffset: -0.23; }
   }
 
+  @keyframes shisen-hint-dash {
+    to { stroke-dashoffset: -0.3; }
+  }
+
   @keyframes shisen-burst {
     0% {
       opacity: 1;
@@ -388,6 +460,7 @@ const BOARD_CSS = `
     .shisen-tile.entering,
     .shisen-tile.selected,
     .shisen-tile.hint,
+    .shisen-tile.hint::after,
     .shisen-tile.shake,
     .shisen-tile.removing,
     .shisen-tile.flip,
@@ -398,6 +471,11 @@ const BOARD_CSS = `
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
+    }
+
+    .shisen-tile.hint::after {
+      animation: none !important;
+      opacity: 0.88;
     }
   }
 }
@@ -463,6 +541,7 @@ export class BoardController {
   private pathClearTimer: number | null = null;
   private refreshTimers: number[] = [];
   private resizeObserver: ResizeObserver | null = null;
+  private activeHint: TilePair | null = null;
   private lastPointerTime = 0;
 
   constructor(options: BoardControllerOptions) {
@@ -613,6 +692,7 @@ export class BoardController {
 
   build(board: BoardInstance, themeKey: TileThemeKey): void {
     this.clearRefreshTimers();
+    this.clearHints();
     this.board = board;
     this.themeKey = themeKey;
     this.gridRows = board.grid.length;
@@ -673,9 +753,17 @@ export class BoardController {
     );
   }
 
+  private coordsEqual(p: Coord, q: Coord): boolean {
+    return p.r === q.r && p.c === q.c;
+  }
+
   setSelected(p: Coord, on: boolean): void {
     const el = this.tileEl(p);
-    if (el) el.classList.toggle('selected', on);
+    if (!el) return;
+    el.classList.toggle('selected', on);
+    if (this.activeHint && this.isHintCoord(p)) {
+      el.classList.toggle('hint', !on);
+    }
   }
 
   shake(p: Coord): void {
@@ -687,30 +775,83 @@ export class BoardController {
     onAnimationEnd(el, 'shisen-shake', () => el.classList.remove('shake'));
   }
 
-  hint(pair: {a: Coord; b: Coord}): void {
-    this.clearHints();
-    [pair.a, pair.b].forEach(p => {
+  hasActiveHint(): boolean {
+    if (!this.activeHint) return false;
+    return Boolean(
+      this.tileEl(this.activeHint.a) && this.tileEl(this.activeHint.b),
+    );
+  }
+
+  isHintCoord(p: Coord): boolean {
+    if (!this.activeHint) return false;
+    return (
+      this.coordsEqual(p, this.activeHint.a) ||
+      this.coordsEqual(p, this.activeHint.b)
+    );
+  }
+
+  pulseHint(): void {
+    if (!this.activeHint) return;
+    [this.activeHint.a, this.activeHint.b].forEach(p => {
       const el = this.tileEl(p);
-      if (!el) return;
+      if (!el || el.classList.contains('selected')) return;
+      el.classList.remove('hint');
+      void el.offsetWidth;
       el.classList.add('hint');
-      onAnimationEnd(el, 'shisen-wiggle', () => el.classList.remove('hint'));
     });
   }
 
+  hint(pair: TilePair): void {
+    this.clearHints();
+    this.activeHint = {
+      a: {...pair.a},
+      b: {...pair.b},
+      path: pair.path
+        ? {...pair.path, points: pair.path.points.map(pt => ({...pt}))}
+        : undefined,
+    };
+    this.boardEl.classList.add('has-hint');
+    [pair.a, pair.b].forEach(p => {
+      const el = this.tileEl(p);
+      if (!el) return;
+      el.classList.remove('entering');
+      el.classList.add('hint');
+    });
+    if (pair.path?.points?.length) {
+      this.drawHintPath(pair.path.points);
+    }
+  }
+
   clearHints(): void {
+    this.activeHint = null;
+    this.boardEl.classList.remove('has-hint');
     this.boardEl
       .querySelectorAll('.shisen-tile.hint')
       .forEach(el => el.classList.remove('hint'));
+    if (this.pathEl.classList.contains('is-hint')) {
+      this.clearPath();
+    }
   }
 
-  drawPath(points: Coord[]): void {
-    this.clearPath();
-    const d = points
+  private buildPathD(points: Coord[]): string {
+    return points
       .map(
         (p, i) =>
           `${i ? 'L' : 'M'}${cellCenter(p.c, this.gridCols)} ${cellCenter(p.r, this.gridRows)}`,
       )
       .join(' ');
+  }
+
+  private drawHintPath(points: Coord[]): void {
+    this.clearPath();
+    const d = this.buildPathD(points);
+    this.pathEl.classList.add('is-hint');
+    this.pathEl.innerHTML = `<path class="shisen-path-line glow" d="${d}"/><path class="shisen-path-line core" d="${d}"/>`;
+  }
+
+  drawPath(points: Coord[]): void {
+    this.clearPath();
+    const d = this.buildPathD(points);
     this.pathEl.innerHTML = `<path class="shisen-path-line glow" d="${d}"/><path class="shisen-path-line core" d="${d}"/>`;
     this.pathFadeTimer = window.setTimeout(() => {
       this.pathEl.classList.add('fade');
@@ -727,7 +868,7 @@ export class BoardController {
       clearTimeout(this.pathClearTimer);
       this.pathClearTimer = null;
     }
-    this.pathEl.classList.remove('fade');
+    this.pathEl.classList.remove('fade', 'is-hint');
     this.pathEl.innerHTML = '';
   }
 
@@ -767,6 +908,7 @@ export class BoardController {
 
   refreshAll(board: BoardInstance): void {
     this.clearRefreshTimers();
+    this.clearHints();
     this.board = board;
     this.applyThemeVars();
     for (let r = 0; r < this.gridRows; r++) {
@@ -810,6 +952,7 @@ export class BoardController {
    * 이동은 즉시 반영되므로 탭 좌표와 보드 상태가 어긋나지 않는다.
    */
   moveTiles(moves: Array<{from: Coord; to: Coord}>): void {
+    this.clearHints();
     // 같은 열 안에서는 아래쪽 이동부터 처리되도록 정렬 (목적지 칸이 비어 있도록)
     const ordered = [...moves].sort((x, y) => y.to.r - x.to.r);
     // 열마다 아래 타일부터 조금씩 늦게 떨어뜨려 차르르 내려앉는 느낌을 준다
