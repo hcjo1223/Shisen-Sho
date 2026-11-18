@@ -8,6 +8,7 @@ import {
   Palette,
   RotateCcw,
   Settings,
+  Share2,
   Shuffle,
   Sun,
 } from 'lucide-react';
@@ -65,16 +66,30 @@ import {
   setBestMs,
   type ColorModeKey,
   type DifficultyKey,
+  type GameEntry,
+  type GameMode,
   type GameSettings,
   type GameStats,
   type SavedGame,
   type TileThemeKey,
 } from '../utils/gameStore';
+import {
+  DAILY_DIFFICULTY,
+  currentStreak,
+  dailySeed,
+  formatDailyShort,
+  loadDailyRecords,
+  recordDailyClear,
+  seededRng,
+  todayKey,
+  transposeGrid,
+} from '../utils/daily';
+import {shareResult, type ShareInfo} from '../utils/shareCard';
 
 export interface GameScreenProps {
   settings: GameSettings;
-  /** true면 저장된 판을 이어서 시작한다 (없으면 새 판). */
-  resume: boolean;
+  /** 진입 방식: 새 판 / 저장된 판 이어하기(없으면 새 판) / 오늘의 챌린지 */
+  entry: GameEntry;
   stats: GameStats;
   onUpdateStats: (nextStats: GameStats) => void;
   onChangeDifficulty: (diff: DifficultyKey) => void;
@@ -91,8 +106,20 @@ export interface GameScreenProps {
 interface ClearInfo {
   isBest: boolean;
   elapsedMs: number;
-  difficultyName: string;
+  /** 다이얼로그 부제, 예: '보통 난이도 클리어 🎉' */
+  subtitle: string;
   message: string;
+  share: ShareInfo;
+}
+
+/** 확인창을 거친 뒤 시작할 판 */
+type PendingStart = {mode: 'classic'; diff: DifficultyKey} | {mode: 'daily'};
+
+function isPortraitStage(stage: HTMLElement | null): boolean {
+  const rect = stage?.getBoundingClientRect();
+  return rect && rect.width > 0 && rect.height > 0
+    ? rect.height > rect.width * 1.1
+    : window.innerHeight > window.innerWidth * 1.1;
 }
 
 const DIFFICULTY_SELECTOR_OPTIONS = DIFFICULTY_ORDER.map(key => ({
@@ -112,7 +139,7 @@ const UI_THEME_SELECTOR_OPTIONS = UI_THEME_OPTIONS.map(option => ({
 
 export function GameScreen({
   settings,
-  resume,
+  entry,
   stats,
   onUpdateStats,
   onChangeDifficulty,
@@ -144,6 +171,11 @@ export function GameScreen({
   const activeDiffRef = useRef<DifficultyKey>(settings.difficulty);
   /** 한 번이라도 조작했는지 — 손대지 않은 판은 저장하지 않는다 */
   const dirtyRef = useRef(false);
+  const modeRef = useRef<GameMode>('classic');
+  /** 일일 챌린지 날짜 'YYYY-MM-DD' */
+  const dailyKeyRef = useRef('');
+  /** 이번 판 최대 콤보 (공유 카드용) */
+  const gameMaxComboRef = useRef(0);
 
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
@@ -158,8 +190,10 @@ export function GameScreen({
   const [finished, setFinished] = useState(false);
   const [clearInfo, setClearInfo] = useState<ClearInfo | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  /** 진행 중인 판을 버리고 새로 시작할지 확인 대기 중인 난이도 */
-  const [pendingNewGame, setPendingNewGame] = useState<DifficultyKey | null>(
+  const [mode, setMode] = useState<GameMode>('classic');
+  const [isSharing, setIsSharing] = useState(false);
+  /** 진행 중인 판을 버리고 새로 시작할지 확인 대기 중인 판 */
+  const [pendingNewGame, setPendingNewGame] = useState<PendingStart | null>(
     null,
   );
 
@@ -210,6 +244,8 @@ export function GameScreen({
       elapsedRef.current = Date.now() - startTimeRef.current;
     }
     saveGame({
+      mode: modeRef.current,
+      dailyKey: modeRef.current === 'daily' ? dailyKeyRef.current : undefined,
       difficulty: activeDiffRef.current,
       rows: board.rows,
       cols: board.cols,
@@ -221,13 +257,23 @@ export function GameScreen({
   }, []);
 
   const resetRoundState = useCallback(
-    (board: BoardInstance, diff: DifficultyKey, saved?: SavedGame) => {
+    (
+      board: BoardInstance,
+      diff: DifficultyKey,
+      nextMode: GameMode,
+      dailyKey: string,
+      saved?: SavedGame,
+    ) => {
       gameIdRef.current += 1;
       clearPendingTimers();
       stopTimer();
 
       boardRef.current = board;
       activeDiffRef.current = diff;
+      modeRef.current = nextMode;
+      dailyKeyRef.current = dailyKey;
+      gameMaxComboRef.current = 0;
+      setMode(nextMode);
       selectedRef.current = null;
       hintsLeftRef.current = saved ? saved.hintsLeft : MAX_HINTS;
       shufflesLeftRef.current = saved ? saved.shufflesLeft : MAX_SHUFFLES;
@@ -242,7 +288,11 @@ export function GameScreen({
       setShufflesLeft(shufflesLeftRef.current);
       setFinished(false);
       setClearInfo(null);
-      setBestMsState(getBestMs(diff));
+      setBestMsState(
+        nextMode === 'daily'
+          ? (loadDailyRecords()[dailyKey]?.bestMs ?? 0)
+          : getBestMs(diff),
+      );
       setRemaining(board.remaining());
 
       controllerRef.current?.build(board, settingsRef.current.theme);
@@ -255,30 +305,48 @@ export function GameScreen({
     (overrideDiff?: DifficultyKey) => {
       const activeDiff = overrideDiff ?? settingsRef.current.difficulty;
       const diff = DIFFICULTIES[activeDiff];
-      const rect = stageRef.current?.getBoundingClientRect();
-      const portrait =
-        rect && rect.width > 0 && rect.height > 0
-          ? rect.height > rect.width * 1.1
-          : window.innerHeight > window.innerWidth * 1.1;
+      const portrait = isPortraitStage(stageRef.current);
 
       const rows = portrait ? diff.cols : diff.rows;
       const cols = portrait ? diff.rows : diff.cols;
 
       clearSavedGame();
-      resetRoundState(createBoard(rows, cols), activeDiff);
+      resetRoundState(createBoard(rows, cols), activeDiff, 'classic', '');
     },
     [resetRoundState],
   );
+
+  /**
+   * 오늘의 챌린지: 날짜 시드로 가로형 판을 만들고, 세로 화면이면 행·열만 바꿔 보여 준다.
+   * (같은 날에는 기기 방향과 상관없이 모두 같은 퍼즐)
+   */
+  const startDailyGame = useCallback(() => {
+    const key = todayKey();
+    const diff = DIFFICULTIES[DAILY_DIFFICULTY];
+    const canonical = createBoard(diff.rows, diff.cols, seededRng(dailySeed(key)));
+    const board = isPortraitStage(stageRef.current)
+      ? createBoardFromGrid(diff.cols, diff.rows, transposeGrid(canonical.grid))
+      : createBoardFromGrid(diff.rows, diff.cols, canonical.grid);
+    clearSavedGame();
+    resetRoundState(board, DAILY_DIFFICULTY, 'daily', key);
+  }, [resetRoundState]);
 
   /** 저장된 판을 복원한다. 복원할 판이 없으면 false. */
   const restoreGame = useCallback((): boolean => {
     const saved = loadSavedGame();
     if (!saved) return false;
     const board = createBoardFromGrid(saved.rows, saved.cols, saved.grid);
-    if (saved.difficulty !== settingsRef.current.difficulty) {
+    const savedMode: GameMode = saved.mode === 'daily' ? 'daily' : 'classic';
+    if (savedMode === 'classic' && saved.difficulty !== settingsRef.current.difficulty) {
       onChangeDifficulty(saved.difficulty);
     }
-    resetRoundState(board, saved.difficulty, saved);
+    resetRoundState(
+      board,
+      saved.difficulty,
+      savedMode,
+      saved.dailyKey ?? '',
+      saved,
+    );
     if (!board.hasMoves()) {
       board.shuffle();
       controllerRef.current?.refreshAll(board);
@@ -288,25 +356,45 @@ export function GameScreen({
   }, [onChangeDifficulty, persistGame, resetRoundState]);
 
   /** 진행 중인 판이 있으면 확인을 받은 뒤 새 판을 시작한다. */
-  const requestNewGame = useCallback(
-    (diff: DifficultyKey) => {
-      if (dirtyRef.current && !finishedRef.current) {
-        setPendingNewGame(diff);
+  const beginStart = useCallback(
+    (start: PendingStart) => {
+      if (start.mode === 'daily') {
+        startDailyGame();
         return;
       }
-      if (diff !== settingsRef.current.difficulty) onChangeDifficulty(diff);
-      startNewGame(diff);
+      if (start.diff !== settingsRef.current.difficulty) {
+        onChangeDifficulty(start.diff);
+      }
+      startNewGame(start.diff);
     },
-    [onChangeDifficulty, startNewGame],
+    [onChangeDifficulty, startDailyGame, startNewGame],
   );
 
+  const requestStart = useCallback(
+    (start: PendingStart) => {
+      if (dirtyRef.current && !finishedRef.current) {
+        setPendingNewGame(start);
+        return;
+      }
+      beginStart(start);
+    },
+    [beginStart],
+  );
+
+  /** 하단 '새 게임' / 클리어 후 '한 판 더': 챌린지 중이면 같은 챌린지를 다시 */
+  const requestReplay = useCallback(() => {
+    requestStart(
+      modeRef.current === 'daily'
+        ? {mode: 'daily'}
+        : {mode: 'classic', diff: settingsRef.current.difficulty},
+    );
+  }, [requestStart]);
+
   const confirmNewGame = useCallback(() => {
-    const diff = pendingNewGame;
+    const start = pendingNewGame;
     setPendingNewGame(null);
-    if (!diff) return;
-    if (diff !== settingsRef.current.difficulty) onChangeDifficulty(diff);
-    startNewGame(diff);
-  }, [onChangeDifficulty, pendingNewGame, startNewGame]);
+    if (start) beginStart(start);
+  }, [beginStart, pendingNewGame]);
 
   const finishGame = useCallback(
     (activeDiff: DifficultyKey) => {
@@ -316,23 +404,34 @@ export function GameScreen({
       clearSavedGame();
 
       const finalElapsed = elapsedRef.current;
+      const finishedMode = modeRef.current;
+      const dailyKey = dailyKeyRef.current;
+      const hintsUsed = MAX_HINTS - hintsLeftRef.current;
       const curStats = statsRef.current;
       const baseNext: GameStats = {
         ...curStats,
         totalClears: curStats.totalClears + 1,
         totalPlayMs: curStats.totalPlayMs + finalElapsed,
       };
-      const prevBest = getBestMs(activeDiff);
-      const isBest = !prevBest || finalElapsed < prevBest;
-      if (isBest) {
-        setBestMs(activeDiff, finalElapsed);
-        setBestMsState(finalElapsed);
+
+      let isBest: boolean;
+      let streak: number | undefined;
+      if (finishedMode === 'daily') {
+        const result = recordDailyClear(dailyKey, finalElapsed, hintsUsed);
+        isBest = result.isBest;
+        streak = currentStreak(result.records, dailyKey);
+      } else {
+        const prevBest = getBestMs(activeDiff);
+        isBest = !prevBest || finalElapsed < prevBest;
+        if (isBest) setBestMs(activeDiff, finalElapsed);
       }
+      if (isBest) setBestMsState(finalElapsed);
 
       const {nextStats, newlyUnlocked} = evaluateUnlockedBadges(
         baseNext,
         activeDiff,
         finalElapsed,
+        {mode: finishedMode, hintsUsed, dailyStreak: streak},
       );
       statsRef.current = nextStats;
       onUpdateStats(nextStats);
@@ -349,11 +448,26 @@ export function GameScreen({
         if (Sound.enabled) Sound.clear();
         const message =
           CLEAR_MESSAGES[Math.floor(Math.random() * CLEAR_MESSAGES.length)];
+        const meta = DIFFICULTY_META[activeDiff];
+        const title =
+          finishedMode === 'daily'
+            ? `🗓️ 오늘의 챌린지 ${formatDailyShort(dailyKey)}`
+            : `${meta.icon} ${meta.name} 난이도`;
+        const themeTiles = THEMES[settingsRef.current.theme].tiles;
         setClearInfo({
           isBest,
           elapsedMs: finalElapsed,
-          difficultyName: DIFFICULTIES[activeDiff].name,
+          subtitle: `${title} 클리어 🎉`,
           message,
+          share: {
+            title,
+            elapsedText: formatTimerClock(finalElapsed),
+            isBest,
+            hintsUsed,
+            maxCombo: gameMaxComboRef.current,
+            streak,
+            emojis: themeTiles.slice(0, 7),
+          },
         });
       }, 600);
       pendingTimersRef.current.push(timer);
@@ -402,6 +516,7 @@ export function GameScreen({
       const nextCombo =
         now - lastMatchRef.current <= COMBO_WINDOW ? comboRef.current + 1 : 1;
       comboRef.current = nextCombo;
+      gameMaxComboRef.current = Math.max(gameMaxComboRef.current, nextCombo);
       lastMatchRef.current = now;
       selectedRef.current = null;
 
@@ -492,10 +607,25 @@ export function GameScreen({
   const handleDifficultyChange = useCallback(
     (nextDiff: string) => {
       setIsSettingsOpen(false);
-      requestNewGame(nextDiff as DifficultyKey);
+      requestStart({mode: 'classic', diff: nextDiff as DifficultyKey});
     },
-    [requestNewGame],
+    [requestStart],
   );
+
+  const handleShare = useCallback(async () => {
+    if (!clearInfo || isSharing) return;
+    setIsSharing(true);
+    try {
+      const outcome = await shareResult(clearInfo.share, stageRef.current ?? undefined);
+      if (outcome === 'downloaded') {
+        showToast('기록 카드 이미지를 저장하고 문구를 복사했어요 📋');
+      } else if (outcome === 'copied') {
+        showToast('기록 문구를 복사했어요 📋');
+      }
+    } finally {
+      setIsSharing(false);
+    }
+  }, [clearInfo, isSharing, showToast]);
 
   const handleTileThemeChange = useCallback(
     (nextTheme: string) => {
@@ -527,7 +657,9 @@ export function GameScreen({
   restoreGameRef.current = restoreGame;
   const persistGameRef = useRef(persistGame);
   persistGameRef.current = persistGame;
-  const resumeRef = useRef(resume);
+  const startDailyGameRef = useRef(startDailyGame);
+  startDailyGameRef.current = startDailyGame;
+  const entryRef = useRef<GameEntry>(entry);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -537,11 +669,16 @@ export function GameScreen({
       onTileSelect: pos => onTileSelectRef.current(pos),
     });
     controllerRef.current = controller;
-    if (!resumeRef.current || !restoreGameRef.current()) {
+    const startEntry = entryRef.current;
+    if (startEntry === 'resume' && restoreGameRef.current()) {
+      // 저장된 판 복원
+    } else if (startEntry === 'daily') {
+      startDailyGameRef.current();
+    } else {
       startNewGameRef.current(settingsRef.current.difficulty);
     }
-    // StrictMode 재마운트나 다음 진입 때는 방금 저장한 판을 이어간다
-    resumeRef.current = true;
+    // StrictMode 재마운트 때는 방금 저장한 판을 이어간다
+    entryRef.current = 'resume';
 
     return () => {
       persistGameRef.current();
@@ -613,6 +750,9 @@ export function GameScreen({
 
               <Card padding={1}>
                 <HStack gap={2} align="center">
+                  {mode === 'daily' && (
+                    <Text size="sm">🗓️</Text>
+                  )}
                   <HStack gap={1} align="center">
                     <Text type="supporting" size="xsm">
                       남은
@@ -633,7 +773,7 @@ export function GameScreen({
 
                   <HStack gap={1} align="center">
                     <Text type="supporting" size="xsm">
-                      최고
+                      {mode === 'daily' ? '오늘' : '최고'}
                     </Text>
                     <Text size="sm" weight="bold" hasTabularNumbers>
                       {formatTime(bestMs)}
@@ -694,11 +834,11 @@ export function GameScreen({
                 />
 
                 <Button
-                  label="새 게임"
+                  label={mode === 'daily' ? '다시 도전' : '새 게임'}
                   variant="primary"
                   size="md"
                   icon={<Icon icon={RotateCcw} size="sm" />}
-                  onClick={() => requestNewGame(settings.difficulty)}
+                  onClick={requestReplay}
                 />
               </HStack>
             </Center>
@@ -717,7 +857,7 @@ export function GameScreen({
           header={
             <DialogHeader
               title={clearInfo?.isBest ? '최고 기록 달성!' : '모두 맞췄어요!'}
-              subtitle={`${clearInfo?.difficultyName ?? ''} 난이도 클리어 🎉`}
+              subtitle={clearInfo?.subtitle ?? ''}
               onOpenChange={open => {
                 if (!open) setClearInfo(null);
               }}
@@ -732,9 +872,36 @@ export function GameScreen({
                   color="orange"
                   label={`클리어 시간 ${formatTimerClock(clearInfo?.elapsedMs ?? 0)}`}
                 />
+                <HStack gap={1} hAlign="center" wrap="wrap">
+                  <Token
+                    size="sm"
+                    color="yellow"
+                    label={`💡 힌트 ${clearInfo?.share.hintsUsed ?? 0}회`}
+                  />
+                  <Token
+                    size="sm"
+                    color="pink"
+                    label={`🔥 최대 콤보 ${clearInfo?.share.maxCombo ?? 0}`}
+                  />
+                  {typeof clearInfo?.share.streak === 'number' && (
+                    <Token
+                      size="sm"
+                      color="green"
+                      label={`🗓️ ${clearInfo.share.streak}일 연속`}
+                    />
+                  )}
+                </HStack>
                 <Text type="supporting" justify="center">
                   {clearInfo?.message ?? ''}
                 </Text>
+                <Button
+                  label="기록 카드 공유하기"
+                  variant="secondary"
+                  width="100%"
+                  icon={<Icon icon={Share2} size="sm" />}
+                  isLoading={isSharing}
+                  onClick={handleShare}
+                />
               </VStack>
             </LayoutContent>
           }
@@ -750,9 +917,9 @@ export function GameScreen({
                   }}
                 />
                 <Button
-                  label="한 판 더"
+                  label={mode === 'daily' ? '다시 도전' : '한 판 더'}
                   variant="primary"
-                  onClick={() => requestNewGame(settings.difficulty)}
+                  onClick={requestReplay}
                 />
               </HStack>
             </LayoutFooter>

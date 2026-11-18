@@ -8,6 +8,7 @@ import {
 } from '../../js/themes.js';
 import RawSound from '../../js/sound.js';
 import type {ThemeSlug} from '../astryx-themes';
+import {todayKey} from './daily';
 import type {
   BoardConstructor,
   BoardInstance,
@@ -18,8 +19,12 @@ import type {
 
 const BoardClass = RawBoard as unknown as BoardConstructor;
 
-export function createBoard(rows: number, cols: number): BoardInstance {
-  return new BoardClass(rows, cols);
+export function createBoard(
+  rows: number,
+  cols: number,
+  rng?: () => number,
+): BoardInstance {
+  return new BoardClass(rows, cols, rng);
 }
 
 export const DIFFICULTIES = RawDIFFICULTIES as Record<
@@ -34,6 +39,9 @@ export type DifficultyKey = 'easy' | 'normal' | 'hard';
 export type TileThemeKey = 'fruit' | 'animal' | 'dessert' | 'mix';
 export type ColorModeKey = 'system' | 'light' | 'dark';
 export type ScreenName = 'home' | 'dashboard' | 'game';
+/** 게임 화면 진입 방식: 새 판 / 저장된 판 이어하기 / 오늘의 챌린지 */
+export type GameEntry = 'new' | 'resume' | 'daily';
+export type GameMode = 'classic' | 'daily';
 
 export const MAX_HINTS = 5;
 export const MAX_SHUFFLES = 1;
@@ -135,6 +143,9 @@ export const BADGES: readonly BadgeInfo[] = [
   {id: 'speedy', icon: '⚡', name: '번개눈', desc: '1분 이내 클리어'},
   {id: 'clears_10', icon: '🏆', name: '열정 플레이어', desc: '누적 10회 클리어'},
   {id: 'pairs_200', icon: '🍒', name: '타일 수집가', desc: '누적 200쌍 매칭'},
+  {id: 'daily_first', icon: '🗓️', name: '오늘의 도전자', desc: '오늘의 챌린지 첫 클리어'},
+  {id: 'streak_7', icon: '🌈', name: '일주일 개근', desc: '오늘의 챌린지 7일 연속 클리어'},
+  {id: 'no_hint', icon: '🧠', name: '혼자서도 척척', desc: '힌트 없이 보통 이상 클리어'},
 ];
 
 export const CLEAR_MESSAGES: readonly string[] = [
@@ -304,10 +315,18 @@ export function formatTimerClock(ms: number): string {
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
+export interface ClearContext {
+  mode: GameMode;
+  hintsUsed: number;
+  /** 일일 챌린지 현재 연속 일수 */
+  dailyStreak?: number;
+}
+
 export function evaluateUnlockedBadges(
   stats: GameStats,
   difficulty: DifficultyKey,
   lastClearMs?: number,
+  context?: ClearContext,
 ): {nextStats: GameStats; newlyUnlocked: BadgeInfo[]} {
   const unlocked = new Set(stats.unlockedBadges);
   const newlyUnlocked: BadgeInfo[] = [];
@@ -328,6 +347,11 @@ export function evaluateUnlockedBadges(
   }
   if (stats.totalClears >= 10) grant('clears_10');
   if (stats.matchedPairs >= 200) grant('pairs_200');
+  if (context?.mode === 'daily') grant('daily_first');
+  if ((context?.dailyStreak ?? 0) >= 7) grant('streak_7');
+  if (context && context.hintsUsed === 0 && difficulty !== 'easy') {
+    grant('no_hint');
+  }
 
   return {
     nextStats: {
@@ -347,6 +371,10 @@ const SAVE_VERSION = 1;
 
 export interface SavedGame {
   version: number;
+  /** 없으면 classic (이전 버전 저장분) */
+  mode?: GameMode;
+  /** mode === 'daily'일 때 챌린지 날짜 'YYYY-MM-DD' */
+  dailyKey?: string;
   difficulty: DifficultyKey;
   rows: number;
   cols: number;
@@ -387,7 +415,10 @@ function isValidSavedGame(raw: unknown): raw is SavedGame {
 export function loadSavedGame(): SavedGame | null {
   try {
     const raw: unknown = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
-    return isValidSavedGame(raw) ? raw : null;
+    if (!isValidSavedGame(raw)) return null;
+    // 지난 날짜의 챌린지는 이어하지 않는다
+    if (raw.mode === 'daily' && raw.dailyKey !== todayKey()) return null;
+    return raw;
   } catch {
     return null;
   }
