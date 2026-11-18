@@ -8,6 +8,7 @@ import {GameScreen} from './components/GameScreen';
 import {HomeScreen} from './components/HomeScreen';
 import {
   Sound,
+  loadSavedGame,
   loadSettings,
   loadStats,
   saveSettings,
@@ -24,7 +25,8 @@ interface AppShellProps {
   settings: GameSettings;
   stats: GameStats;
   screen: ScreenName;
-  onNavigate: (nextScreen: ScreenName) => void;
+  resumeGame: boolean;
+  onNavigate: (nextScreen: ScreenName, resume?: boolean) => void;
   onUpdateSettings: (patch: Partial<GameSettings>) => void;
   onUpdateStats: (nextStats: GameStats) => void;
 }
@@ -33,6 +35,7 @@ function AppShell({
   settings,
   stats,
   screen,
+  resumeGame,
   onNavigate,
   onUpdateSettings,
   onUpdateStats,
@@ -105,7 +108,18 @@ function AppShell({
 
   const handleStartGame = useCallback(() => {
     Sound.unlock();
-    onNavigate('game');
+    onNavigate('game', false);
+  }, [onNavigate]);
+
+  const handleResumeGame = useCallback(() => {
+    Sound.unlock();
+    onNavigate('game', true);
+  }, [onNavigate]);
+
+  /** 대시보드의 플레이 버튼: 저장된 판이 있으면 이어하기 */
+  const handlePlayFromDashboard = useCallback(() => {
+    Sound.unlock();
+    onNavigate('game', loadSavedGame() != null);
   }, [onNavigate]);
 
   const handleOpenDashboard = useCallback(() => {
@@ -121,6 +135,8 @@ function AppShell({
     return (
       <HomeScreen
         settings={settings}
+        savedGame={loadSavedGame()}
+        onResumeGame={handleResumeGame}
         onSelectDifficulty={handleSelectDifficulty}
         onSelectTileTheme={handleSelectTileTheme}
         onChangeUiTheme={handleChangeUiTheme}
@@ -138,7 +154,7 @@ function AppShell({
       <DashboardScreen
         stats={stats}
         onBackHome={handleBackHome}
-        onStartGame={handleStartGame}
+        onStartGame={handlePlayFromDashboard}
       />
     );
   }
@@ -146,6 +162,7 @@ function AppShell({
   return (
     <GameScreen
       settings={settings}
+      resume={resumeGame}
       stats={stats}
       onUpdateStats={onUpdateStats}
       onChangeDifficulty={difficulty => onUpdateSettings({difficulty})}
@@ -163,6 +180,15 @@ function AppShell({
 
 export default function App() {
   const [screen, setScreen] = useState<ScreenName>('home');
+  const [resumeGame, setResumeGame] = useState(false);
+
+  const handleNavigate = useCallback(
+    (nextScreen: ScreenName, resume = false) => {
+      if (nextScreen === 'game') setResumeGame(resume);
+      setScreen(nextScreen);
+    },
+    [],
+  );
   const [settings, setSettings] = useState<GameSettings>(() => {
     const initial = loadSettings();
     Sound.enabled = initial.sound;
@@ -228,7 +254,8 @@ export default function App() {
           settings={settings}
           stats={stats}
           screen={screen}
-          onNavigate={setScreen}
+          resumeGame={resumeGame}
+          onNavigate={handleNavigate}
           onUpdateSettings={handleUpdateSettings}
           onUpdateStats={handleUpdateStats}
         />

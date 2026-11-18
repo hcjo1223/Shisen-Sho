@@ -1,12 +1,16 @@
+import {useState} from 'react';
 import {
   BarChart3,
   Monitor,
   Moon,
   Palette,
   Play,
+  RotateCcw,
   Sun,
 } from 'lucide-react';
+import {AlertDialog} from '@astryxdesign/core/AlertDialog';
 import {Button} from '@astryxdesign/core/Button';
+import {IconButton} from '@astryxdesign/core/IconButton';
 import {Card} from '@astryxdesign/core/Card';
 import {Center} from '@astryxdesign/core/Center';
 import {Divider} from '@astryxdesign/core/Divider';
@@ -35,16 +39,22 @@ import {
   THEMES,
   TILE_THEME_ORDER,
   UI_THEME_OPTIONS,
+  countRemaining,
   formatTime,
+  formatTimerClock,
   getBestMs,
   type ColorModeKey,
   type DifficultyKey,
   type GameSettings,
+  type SavedGame,
   type TileThemeKey,
 } from '../utils/gameStore';
 
 export interface HomeScreenProps {
   settings: GameSettings;
+  /** 이어할 수 있는 저장된 판 (없으면 null) */
+  savedGame: SavedGame | null;
+  onResumeGame: () => void;
   onSelectDifficulty: (diff: DifficultyKey) => void;
   onSelectTileTheme: (theme: TileThemeKey) => void;
   onChangeUiTheme: (uiTheme: ThemeSlug) => void;
@@ -57,6 +67,8 @@ export interface HomeScreenProps {
 
 export function HomeScreen({
   settings,
+  savedGame,
+  onResumeGame,
   onSelectDifficulty,
   onSelectTileTheme,
   onChangeUiTheme,
@@ -66,6 +78,10 @@ export function HomeScreen({
   onStartGame,
   onOpenDashboard,
 }: HomeScreenProps) {
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const savedMeta = savedGame ? DIFFICULTY_META[savedGame.difficulty] : null;
+  const savedRemaining = savedGame ? countRemaining(savedGame.grid) : 0;
+
   return (
     <VStack height="100dvh">
       <Layout
@@ -94,6 +110,24 @@ export function HomeScreen({
                   </Text>
                 </VStack>
               </Center>
+
+              {savedGame && savedMeta && (
+                <Card padding={2} elevation="low">
+                  <HStack justify="between" align="center" gap={2} wrap="wrap">
+                    <VStack gap={0.5}>
+                      <Heading level={2}>하던 판이 있어요</Heading>
+                      <Text type="supporting" size="sm">
+                        {`${savedMeta.icon} ${savedMeta.name} · 남은 ${savedRemaining}개 · ${formatTimerClock(savedGame.elapsedMs)}`}
+                      </Text>
+                    </VStack>
+                    <Token
+                      size="sm"
+                      color="orange"
+                      label={`${Math.round((1 - savedRemaining / savedMeta.tiles) * 100)}% 진행`}
+                    />
+                  </HStack>
+                </Card>
+              )}
 
               <Card padding={2}>
                 <VStack gap={1.5}>
@@ -258,26 +292,67 @@ export function HomeScreen({
         footer={
           <LayoutFooter hasDivider padding={2}>
             <Center>
-              <HStack gap={2} width="100%" maxWidth={620} justify="center">
-                <Button
-                  label="대시보드"
-                  variant="secondary"
-                  size="lg"
-                  icon={<Icon icon={BarChart3} size="sm" />}
-                  onClick={onOpenDashboard}
-                />
-                <Button
-                  label="게임 시작"
-                  variant="primary"
-                  size="lg"
-                  width="fill"
-                  icon={<Icon icon={Play} size="sm" />}
-                  onClick={onStartGame}
-                />
-              </HStack>
+              {savedGame ? (
+                <HStack gap={2} width="100%" maxWidth={620} justify="center">
+                  <IconButton
+                    label="대시보드"
+                    variant="secondary"
+                    size="lg"
+                    icon={<Icon icon={BarChart3} size="sm" />}
+                    onClick={onOpenDashboard}
+                  />
+                  <Button
+                    label="새 게임"
+                    variant="secondary"
+                    size="lg"
+                    icon={<Icon icon={RotateCcw} size="sm" />}
+                    onClick={() => setIsConfirmOpen(true)}
+                  />
+                  <Button
+                    label="이어하기"
+                    variant="primary"
+                    size="lg"
+                    width="fill"
+                    icon={<Icon icon={Play} size="sm" />}
+                    onClick={onResumeGame}
+                  />
+                </HStack>
+              ) : (
+                <HStack gap={2} width="100%" maxWidth={620} justify="center">
+                  <Button
+                    label="대시보드"
+                    variant="secondary"
+                    size="lg"
+                    icon={<Icon icon={BarChart3} size="sm" />}
+                    onClick={onOpenDashboard}
+                  />
+                  <Button
+                    label="게임 시작"
+                    variant="primary"
+                    size="lg"
+                    width="fill"
+                    icon={<Icon icon={Play} size="sm" />}
+                    onClick={onStartGame}
+                  />
+                </HStack>
+              )}
             </Center>
           </LayoutFooter>
         }
+      />
+
+      <AlertDialog
+        isOpen={isConfirmOpen}
+        onOpenChange={setIsConfirmOpen}
+        title="새 판을 시작할까요?"
+        description="하던 판은 사라지고 선택한 난이도로 새로 시작해요."
+        actionLabel="새로 시작"
+        cancelLabel="이어서 할래요"
+        actionVariant="primary"
+        onAction={() => {
+          setIsConfirmOpen(false);
+          onStartGame();
+        }}
       />
     </VStack>
   );

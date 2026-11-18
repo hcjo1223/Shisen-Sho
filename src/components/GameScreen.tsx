@@ -3,21 +3,23 @@ import {
   BarChart3,
   Home,
   Lightbulb,
+  Monitor,
   Moon,
-  Music,
   Palette,
   RotateCcw,
+  Settings,
   Shuffle,
   Sun,
-  Volume2,
-  VolumeX,
 } from 'lucide-react';
+import {AlertDialog} from '@astryxdesign/core/AlertDialog';
 import {Badge} from '@astryxdesign/core/Badge';
+import {BottomSheet} from '@astryxdesign/core/BottomSheet';
 import {Button} from '@astryxdesign/core/Button';
 import {IconButton} from '@astryxdesign/core/IconButton';
 import {Card} from '@astryxdesign/core/Card';
 import {Center} from '@astryxdesign/core/Center';
 import {Dialog, DialogHeader} from '@astryxdesign/core/Dialog';
+import {Divider} from '@astryxdesign/core/Divider';
 import {Icon} from '@astryxdesign/core/Icon';
 import {
   HStack,
@@ -27,9 +29,13 @@ import {
   LayoutHeader,
   VStack,
 } from '@astryxdesign/core/Layout';
+import {
+  SegmentedControl,
+  SegmentedControlItem,
+} from '@astryxdesign/core/SegmentedControl';
 import {Selector} from '@astryxdesign/core/Selector';
+import {Switch} from '@astryxdesign/core/Switch';
 import {Heading, Text} from '@astryxdesign/core/Text';
-import {ToggleButton} from '@astryxdesign/core/ToggleButton';
 import {Token} from '@astryxdesign/core/Token';
 import type {ThemeSlug} from '../astryx-themes';
 import {BoardController} from '../board/boardController';
@@ -47,8 +53,12 @@ import {
   THEMES,
   TILE_THEME_ORDER,
   UI_THEME_OPTIONS,
+  clearSavedGame,
   createBoard,
+  createBoardFromGrid,
   evaluateUnlockedBadges,
+  loadSavedGame,
+  saveGame,
   formatTime,
   formatTimerClock,
   getBestMs,
@@ -57,11 +67,14 @@ import {
   type DifficultyKey,
   type GameSettings,
   type GameStats,
+  type SavedGame,
   type TileThemeKey,
 } from '../utils/gameStore';
 
 export interface GameScreenProps {
   settings: GameSettings;
+  /** true면 저장된 판을 이어서 시작한다 (없으면 새 판). */
+  resume: boolean;
   stats: GameStats;
   onUpdateStats: (nextStats: GameStats) => void;
   onChangeDifficulty: (diff: DifficultyKey) => void;
@@ -99,6 +112,7 @@ const UI_THEME_SELECTOR_OPTIONS = UI_THEME_OPTIONS.map(option => ({
 
 export function GameScreen({
   settings,
+  resume,
   stats,
   onUpdateStats,
   onChangeDifficulty,
@@ -126,6 +140,10 @@ export function GameScreen({
   const timerIdRef = useRef<number | null>(null);
   const pendingTimersRef = useRef<number[]>([]);
   const gameIdRef = useRef(0);
+  /** 현재 판의 난이도 (설정 변경과 별개로 저장에 사용) */
+  const activeDiffRef = useRef<DifficultyKey>(settings.difficulty);
+  /** 한 번이라도 조작했는지 — 손대지 않은 판은 저장하지 않는다 */
+  const dirtyRef = useRef(false);
 
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
@@ -139,6 +157,11 @@ export function GameScreen({
   const [shufflesLeft, setShufflesLeft] = useState(MAX_SHUFFLES);
   const [finished, setFinished] = useState(false);
   const [clearInfo, setClearInfo] = useState<ClearInfo | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  /** 진행 중인 판을 버리고 새로 시작할지 확인 대기 중인 난이도 */
+  const [pendingNewGame, setPendingNewGame] = useState<DifficultyKey | null>(
+    null,
+  );
 
   const stopTimer = useCallback(() => {
     if (timerIdRef.current !== null) {
@@ -179,6 +202,55 @@ export function GameScreen({
     controllerRef.current?.setSelected(p, true);
   }, []);
 
+  const persistGame = useCallback(() => {
+    const board = boardRef.current;
+    if (!board || finishedRef.current || !dirtyRef.current) return;
+    if (board.isCleared()) return;
+    if (timerIdRef.current !== null) {
+      elapsedRef.current = Date.now() - startTimeRef.current;
+    }
+    saveGame({
+      difficulty: activeDiffRef.current,
+      rows: board.rows,
+      cols: board.cols,
+      grid: board.grid,
+      elapsedMs: elapsedRef.current,
+      hintsLeft: hintsLeftRef.current,
+      shufflesLeft: shufflesLeftRef.current,
+    });
+  }, []);
+
+  const resetRoundState = useCallback(
+    (board: BoardInstance, diff: DifficultyKey, saved?: SavedGame) => {
+      gameIdRef.current += 1;
+      clearPendingTimers();
+      stopTimer();
+
+      boardRef.current = board;
+      activeDiffRef.current = diff;
+      selectedRef.current = null;
+      hintsLeftRef.current = saved ? saved.hintsLeft : MAX_HINTS;
+      shufflesLeftRef.current = saved ? saved.shufflesLeft : MAX_SHUFFLES;
+      elapsedRef.current = saved ? saved.elapsedMs : 0;
+      comboRef.current = 0;
+      lastMatchRef.current = 0;
+      finishedRef.current = false;
+      dirtyRef.current = Boolean(saved);
+
+      setElapsedMs(elapsedRef.current);
+      setHintsLeft(hintsLeftRef.current);
+      setShufflesLeft(shufflesLeftRef.current);
+      setFinished(false);
+      setClearInfo(null);
+      setBestMsState(getBestMs(diff));
+      setRemaining(board.remaining());
+
+      controllerRef.current?.build(board, settingsRef.current.theme);
+      startTimer();
+    },
+    [clearPendingTimers, startTimer, stopTimer],
+  );
+
   const startNewGame = useCallback(
     (overrideDiff?: DifficultyKey) => {
       const activeDiff = overrideDiff ?? settingsRef.current.difficulty;
@@ -192,39 +264,56 @@ export function GameScreen({
       const rows = portrait ? diff.cols : diff.rows;
       const cols = portrait ? diff.rows : diff.cols;
 
-      gameIdRef.current += 1;
-      clearPendingTimers();
-      stopTimer();
-
-      const board = createBoard(rows, cols);
-      boardRef.current = board;
-      selectedRef.current = null;
-      hintsLeftRef.current = MAX_HINTS;
-      shufflesLeftRef.current = MAX_SHUFFLES;
-      elapsedRef.current = 0;
-      comboRef.current = 0;
-      lastMatchRef.current = 0;
-      finishedRef.current = false;
-
-      setElapsedMs(0);
-      setHintsLeft(MAX_HINTS);
-      setShufflesLeft(MAX_SHUFFLES);
-      setFinished(false);
-      setClearInfo(null);
-      setBestMsState(getBestMs(activeDiff));
-      setRemaining(board.remaining());
-
-      controllerRef.current?.build(board, settingsRef.current.theme);
-      startTimer();
+      clearSavedGame();
+      resetRoundState(createBoard(rows, cols), activeDiff);
     },
-    [clearPendingTimers, startTimer, stopTimer],
+    [resetRoundState],
   );
+
+  /** 저장된 판을 복원한다. 복원할 판이 없으면 false. */
+  const restoreGame = useCallback((): boolean => {
+    const saved = loadSavedGame();
+    if (!saved) return false;
+    const board = createBoardFromGrid(saved.rows, saved.cols, saved.grid);
+    if (saved.difficulty !== settingsRef.current.difficulty) {
+      onChangeDifficulty(saved.difficulty);
+    }
+    resetRoundState(board, saved.difficulty, saved);
+    if (!board.hasMoves()) {
+      board.shuffle();
+      controllerRef.current?.refreshAll(board);
+      persistGame();
+    }
+    return true;
+  }, [onChangeDifficulty, persistGame, resetRoundState]);
+
+  /** 진행 중인 판이 있으면 확인을 받은 뒤 새 판을 시작한다. */
+  const requestNewGame = useCallback(
+    (diff: DifficultyKey) => {
+      if (dirtyRef.current && !finishedRef.current) {
+        setPendingNewGame(diff);
+        return;
+      }
+      if (diff !== settingsRef.current.difficulty) onChangeDifficulty(diff);
+      startNewGame(diff);
+    },
+    [onChangeDifficulty, startNewGame],
+  );
+
+  const confirmNewGame = useCallback(() => {
+    const diff = pendingNewGame;
+    setPendingNewGame(null);
+    if (!diff) return;
+    if (diff !== settingsRef.current.difficulty) onChangeDifficulty(diff);
+    startNewGame(diff);
+  }, [onChangeDifficulty, pendingNewGame, startNewGame]);
 
   const finishGame = useCallback(
     (activeDiff: DifficultyKey) => {
       finishedRef.current = true;
       setFinished(true);
       stopTimer();
+      clearSavedGame();
 
       const finalElapsed = elapsedRef.current;
       const curStats = statsRef.current;
@@ -278,6 +367,7 @@ export function GameScreen({
       if (!board || finishedRef.current) return;
       Sound.unlock();
       controllerRef.current?.clearHints();
+      dirtyRef.current = true;
       const cur = selectedRef.current;
 
       if (!cur) {
@@ -331,9 +421,10 @@ export function GameScreen({
       syncRemaining();
 
       if (board.isCleared()) {
-        finishGame(settingsRef.current.difficulty);
+        finishGame(activeDiffRef.current);
         return;
       }
+      persistGame();
 
       if (!board.hasMoves()) {
         const currentGameId = gameIdRef.current;
@@ -345,11 +436,20 @@ export function GameScreen({
           if (Sound.enabled) Sound.shuffle();
           showToast('더 이상 맞출 짝이 없어서 타일을 섞었어요! 🔀');
           syncRemaining();
+          persistGame();
         }, 450);
         pendingTimersRef.current.push(timer);
       }
     },
-    [deselect, finishGame, onUpdateStats, selectTile, showToast, syncRemaining],
+    [
+      deselect,
+      finishGame,
+      onUpdateStats,
+      persistGame,
+      selectTile,
+      showToast,
+      syncRemaining,
+    ],
   );
 
   const handleHint = useCallback(() => {
@@ -364,10 +464,12 @@ export function GameScreen({
 
     hintsLeftRef.current -= 1;
     setHintsLeft(hintsLeftRef.current);
+    dirtyRef.current = true;
     deselect();
     controllerRef.current?.hint(pair);
     if (Sound.enabled) Sound.hint();
-  }, [deselect, showToast]);
+    persistGame();
+  }, [deselect, persistGame, showToast]);
 
   const handleShuffle = useCallback(() => {
     const board = boardRef.current;
@@ -380,18 +482,19 @@ export function GameScreen({
     setShufflesLeft(shufflesLeftRef.current);
     deselect();
     controllerRef.current?.clearHints();
+    dirtyRef.current = true;
     board.shuffle();
     controllerRef.current?.refreshAll(board);
     if (Sound.enabled) Sound.shuffle();
-  }, [deselect, showToast]);
+    persistGame();
+  }, [deselect, persistGame, showToast]);
 
   const handleDifficultyChange = useCallback(
     (nextDiff: string) => {
-      const typedDiff = nextDiff as DifficultyKey;
-      onChangeDifficulty(typedDiff);
-      startNewGame(typedDiff);
+      setIsSettingsOpen(false);
+      requestNewGame(nextDiff as DifficultyKey);
     },
-    [onChangeDifficulty, startNewGame],
+    [requestNewGame],
   );
 
   const handleTileThemeChange = useCallback(
@@ -406,20 +509,25 @@ export function GameScreen({
     [onChangeTileTheme],
   );
 
-  const handleQuickColorModeToggle = useCallback(() => {
-    const prefersDark =
-      typeof window !== 'undefined' &&
-      window.matchMedia?.('(prefers-color-scheme: dark)').matches;
-    const isCurrentlyDark =
-      settings.colorMode === 'dark' ||
-      (settings.colorMode === 'system' && prefersDark);
-    onChangeColorMode(isCurrentlyDark ? 'light' : 'dark');
-  }, [onChangeColorMode, settings.colorMode]);
+  const handleBackHome = useCallback(() => {
+    persistGame();
+    onBackHome();
+  }, [onBackHome, persistGame]);
+
+  const handleOpenDashboard = useCallback(() => {
+    persistGame();
+    onOpenDashboard();
+  }, [onOpenDashboard, persistGame]);
 
   const onTileSelectRef = useRef(handleTileSelect);
   onTileSelectRef.current = handleTileSelect;
   const startNewGameRef = useRef(startNewGame);
   startNewGameRef.current = startNewGame;
+  const restoreGameRef = useRef(restoreGame);
+  restoreGameRef.current = restoreGame;
+  const persistGameRef = useRef(persistGame);
+  persistGameRef.current = persistGame;
+  const resumeRef = useRef(resume);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -429,9 +537,14 @@ export function GameScreen({
       onTileSelect: pos => onTileSelectRef.current(pos),
     });
     controllerRef.current = controller;
-    startNewGameRef.current(settingsRef.current.difficulty);
+    if (!resumeRef.current || !restoreGameRef.current()) {
+      startNewGameRef.current(settingsRef.current.difficulty);
+    }
+    // StrictMode 재마운트나 다음 진입 때는 방금 저장한 판을 이어간다
+    resumeRef.current = true;
 
     return () => {
+      persistGameRef.current();
       clearPendingTimers();
       stopTimer();
       controller.destroy();
@@ -458,6 +571,7 @@ export function GameScreen({
 
     const onVisibilityChange = () => {
       if (document.hidden) {
+        persistGame();
         stopTimer();
       } else if (!finishedRef.current) {
         startTimer();
@@ -466,36 +580,36 @@ export function GameScreen({
 
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pagehide', persistGame);
     return () => {
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pagehide', persistGame);
     };
-  }, [deselect, handleHint, handleShuffle, onToggleBgm, startTimer, stopTimer]);
-
-  const prefersDark =
-    typeof window !== 'undefined' &&
-    window.matchMedia?.('(prefers-color-scheme: dark)').matches;
-  const isDarkActive =
-    settings.colorMode === 'dark' ||
-    (settings.colorMode === 'system' && prefersDark);
+  }, [
+    deselect,
+    handleHint,
+    handleShuffle,
+    onToggleBgm,
+    persistGame,
+    startTimer,
+    stopTimer,
+  ]);
 
   return (
     <VStack height="100dvh">
       <Layout
         height="fill"
         header={
-          <LayoutHeader hasDivider padding={1.5}>
-            <HStack justify="between" align="center" gap={1.5} wrap="wrap">
-              <HStack gap={1.5} align="center">
-                <IconButton
-                  label="홈으로"
-                  icon={<Icon icon={Home} size="sm" />}
-                  variant="secondary"
-                  size="sm"
-                  onClick={onBackHome}
-                />
-                <Heading level={4}>말랑 사천성</Heading>
-              </HStack>
+          <LayoutHeader hasDivider padding={1}>
+            <HStack justify="between" align="center" gap={1}>
+              <IconButton
+                label="홈으로 (진행 상황은 자동 저장돼요)"
+                icon={<Icon icon={Home} size="sm" />}
+                variant="secondary"
+                size="sm"
+                onClick={handleBackHome}
+              />
 
               <Card padding={1}>
                 <HStack gap={2} align="center">
@@ -528,70 +642,13 @@ export function GameScreen({
                 </HStack>
               </Card>
 
-              <HStack gap={1} align="center" wrap="wrap">
-                <Selector
-                  label="난이도"
-                  isLabelHidden
-                  size="sm"
-                  variant="secondary"
-                  presentation="adaptive"
-                  options={DIFFICULTY_SELECTOR_OPTIONS}
-                  value={settings.difficulty}
-                  onChange={handleDifficultyChange}
-                />
-                <Selector
-                  label="타일 테마"
-                  isLabelHidden
-                  size="sm"
-                  variant="secondary"
-                  presentation="adaptive"
-                  options={TILE_THEME_SELECTOR_OPTIONS}
-                  value={settings.theme}
-                  onChange={handleTileThemeChange}
-                />
-                <Selector
-                  label="UI 테마"
-                  isLabelHidden
-                  size="sm"
-                  variant="secondary"
-                  presentation="adaptive"
-                  startIcon={<Icon icon={Palette} size="sm" />}
-                  options={UI_THEME_SELECTOR_OPTIONS}
-                  value={settings.uiTheme}
-                  onChange={val => onChangeUiTheme(val as ThemeSlug)}
-                />
-                <IconButton
-                  label={isDarkActive ? '라이트 모드' : '다크 모드'}
-                  icon={<Icon icon={isDarkActive ? Sun : Moon} size="sm" />}
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleQuickColorModeToggle}
-                />
-                <ToggleButton
-                  label={settings.bgm ? '배경음악 끄기' : '배경음악 켜기'}
-                  isIconOnly
-                  size="sm"
-                  isPressed={settings.bgm}
-                  icon={<Icon icon={Music} size="sm" />}
-                  onPressedChange={pressed => onToggleBgm(pressed)}
-                />
-                <ToggleButton
-                  label={settings.sound ? '효과음 끄기' : '효과음 켜기'}
-                  isIconOnly
-                  size="sm"
-                  isPressed={settings.sound}
-                  icon={<Icon icon={VolumeX} size="sm" />}
-                  pressedIcon={<Icon icon={Volume2} size="sm" />}
-                  onPressedChange={pressed => onToggleSound(pressed)}
-                />
-                <IconButton
-                  label="대시보드"
-                  icon={<Icon icon={BarChart3} size="sm" />}
-                  variant="secondary"
-                  size="sm"
-                  onClick={onOpenDashboard}
-                />
-              </HStack>
+              <IconButton
+                label="게임 설정"
+                icon={<Icon icon={Settings} size="sm" />}
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsSettingsOpen(true)}
+              />
             </HStack>
           </LayoutHeader>
         }
@@ -641,7 +698,7 @@ export function GameScreen({
                   variant="primary"
                   size="md"
                   icon={<Icon icon={RotateCcw} size="sm" />}
-                  onClick={() => startNewGame(settings.difficulty)}
+                  onClick={() => requestNewGame(settings.difficulty)}
                 />
               </HStack>
             </Center>
@@ -689,19 +746,124 @@ export function GameScreen({
                   variant="secondary"
                   onClick={() => {
                     setClearInfo(null);
-                    onOpenDashboard();
+                    handleOpenDashboard();
                   }}
                 />
                 <Button
                   label="한 판 더"
                   variant="primary"
-                  onClick={() => startNewGame(settings.difficulty)}
+                  onClick={() => requestNewGame(settings.difficulty)}
                 />
               </HStack>
             </LayoutFooter>
           }
         />
       </Dialog>
+
+      <BottomSheet
+        isOpen={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
+        label="게임 설정"
+        height="hug">
+        <VStack gap={2}>
+          <Heading level={3}>게임 설정</Heading>
+
+          <Selector
+            label="난이도 (바꾸면 새 판이 시작돼요)"
+            presentation="adaptive"
+            width="100%"
+            options={DIFFICULTY_SELECTOR_OPTIONS}
+            value={settings.difficulty}
+            onChange={handleDifficultyChange}
+          />
+          <Selector
+            label="타일 테마"
+            presentation="adaptive"
+            width="100%"
+            options={TILE_THEME_SELECTOR_OPTIONS}
+            value={settings.theme}
+            onChange={handleTileThemeChange}
+          />
+          <Selector
+            label="UI 테마"
+            presentation="adaptive"
+            width="100%"
+            startIcon={<Icon icon={Palette} size="sm" />}
+            options={UI_THEME_SELECTOR_OPTIONS}
+            value={settings.uiTheme}
+            onChange={val => onChangeUiTheme(val as ThemeSlug)}
+          />
+
+          <VStack gap={1}>
+            <Text type="label" weight="medium">
+              화면 모드
+            </Text>
+            <SegmentedControl
+              label="화면 모드"
+              value={settings.colorMode}
+              onChange={val => onChangeColorMode(val as ColorModeKey)}
+              layout="fill"
+              size="md">
+              <SegmentedControlItem
+                value="system"
+                label="자동"
+                icon={<Icon icon={Monitor} size="sm" />}
+              />
+              <SegmentedControlItem
+                value="light"
+                label="라이트"
+                icon={<Icon icon={Sun} size="sm" />}
+              />
+              <SegmentedControlItem
+                value="dark"
+                label="다크"
+                icon={<Icon icon={Moon} size="sm" />}
+              />
+            </SegmentedControl>
+          </VStack>
+
+          <Divider />
+
+          <Switch
+            label="배경음악 (도트 BGM)"
+            labelPosition="start"
+            labelSpacing="spread"
+            value={settings.bgm}
+            onChange={checked => onToggleBgm(checked)}
+          />
+          <Switch
+            label="효과음 (SFX)"
+            labelPosition="start"
+            labelSpacing="spread"
+            value={settings.sound}
+            onChange={checked => onToggleSound(checked)}
+          />
+
+          <Button
+            label="플레이 대시보드"
+            variant="secondary"
+            width="100%"
+            icon={<Icon icon={BarChart3} size="sm" />}
+            onClick={() => {
+              setIsSettingsOpen(false);
+              handleOpenDashboard();
+            }}
+          />
+        </VStack>
+      </BottomSheet>
+
+      <AlertDialog
+        isOpen={pendingNewGame != null}
+        onOpenChange={open => {
+          if (!open) setPendingNewGame(null);
+        }}
+        title="새 판을 시작할까요?"
+        description="지금 진행 중인 판은 사라져요."
+        actionLabel="새로 시작"
+        cancelLabel="계속 하기"
+        actionVariant="primary"
+        onAction={confirmNewGame}
+      />
     </VStack>
   );
 }

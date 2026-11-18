@@ -337,3 +337,93 @@ export function evaluateUnlockedBadges(
     newlyUnlocked,
   };
 }
+
+// ---------------------------------------------------------------------------
+// 진행 중인 판 저장 / 이어하기
+// ---------------------------------------------------------------------------
+
+const SAVE_KEY = 'shisen-save';
+const SAVE_VERSION = 1;
+
+export interface SavedGame {
+  version: number;
+  difficulty: DifficultyKey;
+  rows: number;
+  cols: number;
+  grid: number[][];
+  elapsedMs: number;
+  hintsLeft: number;
+  shufflesLeft: number;
+  savedAt: number;
+}
+
+function isValidSavedGame(raw: unknown): raw is SavedGame {
+  if (!raw || typeof raw !== 'object') return false;
+  const s = raw as Partial<SavedGame>;
+  if (s.version !== SAVE_VERSION) return false;
+  if (s.difficulty !== 'easy' && s.difficulty !== 'normal' && s.difficulty !== 'hard') {
+    return false;
+  }
+  const {rows, cols, grid} = s;
+  if (!Number.isInteger(rows) || !Number.isInteger(cols)) return false;
+  if (!Array.isArray(grid) || grid.length !== (rows as number) + 2) return false;
+  const kinds = ((rows as number) * (cols as number)) / 4;
+  let remaining = 0;
+  for (const row of grid) {
+    if (!Array.isArray(row) || row.length !== (cols as number) + 2) return false;
+    for (const v of row) {
+      if (!Number.isInteger(v) || v < 0 || v > kinds) return false;
+      if (v !== 0) remaining++;
+    }
+  }
+  if (remaining === 0 || remaining % 2 !== 0) return false;
+  return (
+    typeof s.elapsedMs === 'number' &&
+    typeof s.hintsLeft === 'number' &&
+    typeof s.shufflesLeft === 'number'
+  );
+}
+
+export function loadSavedGame(): SavedGame | null {
+  try {
+    const raw: unknown = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    return isValidSavedGame(raw) ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveGame(game: Omit<SavedGame, 'version' | 'savedAt'>): void {
+  try {
+    const payload: SavedGame = {...game, version: SAVE_VERSION, savedAt: Date.now()};
+    localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
+export function clearSavedGame(): void {
+  try {
+    localStorage.removeItem(SAVE_KEY);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export function countRemaining(grid: number[][]): number {
+  let n = 0;
+  for (const row of grid) for (const v of row) if (v !== 0) n++;
+  return n;
+}
+
+/** 저장된 격자로 보드를 복원한다 (생성자가 만든 판은 덮어쓴다). */
+export function createBoardFromGrid(
+  rows: number,
+  cols: number,
+  grid: number[][],
+): BoardInstance {
+  const board = createBoard(rows, cols);
+  board.grid = grid.map(row => [...row]);
+  board.history = [];
+  return board;
+}

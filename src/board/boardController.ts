@@ -33,8 +33,10 @@ const BOARD_CSS = `
   .shisen-board {
     position: relative;
     display: grid;
-    grid-template-columns: repeat(var(--shisen-cols), var(--shisen-cell));
-    grid-template-rows: repeat(var(--shisen-rows), var(--shisen-cell));
+    /* 바깥 테두리 통로(패딩 칸)는 반 칸 너비로 그려 타일 공간을 넓힌다 */
+    --shisen-edge: calc(var(--shisen-cell) * 0.5);
+    grid-template-columns: var(--shisen-edge) repeat(calc(var(--shisen-cols) - 2), var(--shisen-cell)) var(--shisen-edge);
+    grid-template-rows: var(--shisen-edge) repeat(calc(var(--shisen-rows) - 2), var(--shisen-cell)) var(--shisen-edge);
     touch-action: none;
     user-select: none;
     -webkit-user-select: none;
@@ -123,8 +125,8 @@ const BOARD_CSS = `
   .shisen-fx-layer {
     position: absolute;
     inset: 2px;
-    width: calc(var(--shisen-cell) * var(--shisen-cols));
-    height: calc(var(--shisen-cell) * var(--shisen-rows));
+    width: calc(var(--shisen-cell) * (var(--shisen-cols) - 1));
+    height: calc(var(--shisen-cell) * (var(--shisen-rows) - 1));
     pointer-events: none;
     overflow: visible;
   }
@@ -288,6 +290,23 @@ const BOARD_CSS = `
 }
 `;
 
+/**
+ * 패딩 칸은 반 칸 너비이므로, 셀 인덱스 → 셀 단위 중심 좌표 변환.
+ * 0 → 0.25, 1..n-2 → i, n-1 → n-1.25 (전체 길이는 n-1 셀)
+ */
+function cellCenter(i: number, n: number): number {
+  if (i <= 0) return 0.25;
+  if (i >= n - 1) return n - 1.25;
+  return i;
+}
+
+/** 셀 단위 좌표 → 셀 인덱스 (cellCenter의 역변환) */
+function cellIndexAt(u: number, n: number): number {
+  if (u < 0.5) return 0;
+  if (u >= n - 1.5) return n - 1;
+  return Math.floor(u - 0.5) + 1;
+}
+
 function ensureBoardStyles(): void {
   if (typeof document === 'undefined') return;
   if (document.getElementById(STYLE_ID)) return;
@@ -423,7 +442,10 @@ export class BoardController {
 
     this.stageRoot.style.setProperty('--shisen-rows', String(this.gridRows));
     this.stageRoot.style.setProperty('--shisen-cols', String(this.gridCols));
-    this.pathEl.setAttribute('viewBox', `0 0 ${this.gridCols} ${this.gridRows}`);
+    this.pathEl.setAttribute(
+      'viewBox',
+      `0 0 ${this.gridCols - 1} ${this.gridRows - 1}`,
+    );
 
     this.clearPath();
     this.fxEl.innerHTML = '';
@@ -460,7 +482,11 @@ export class BoardController {
     const availableW = Math.max(rect.width - 8, 120);
     const availableH = Math.max(rect.height - 8, 120);
     const cell = Math.floor(
-      Math.min(availableW / this.gridCols, availableH / this.gridRows, 96),
+      Math.min(
+        availableW / (this.gridCols - 1),
+        availableH / (this.gridRows - 1),
+        96,
+      ),
     );
     this.stageRoot.style.setProperty(
       '--shisen-cell',
@@ -505,7 +531,10 @@ export class BoardController {
   drawPath(points: Coord[]): void {
     this.clearPath();
     const d = points
-      .map((p, i) => `${i ? 'L' : 'M'}${p.c + 0.5} ${p.r + 0.5}`)
+      .map(
+        (p, i) =>
+          `${i ? 'L' : 'M'}${cellCenter(p.c, this.gridCols)} ${cellCenter(p.r, this.gridRows)}`,
+      )
       .join(' ');
     this.pathEl.innerHTML = `<path class="shisen-path-line glow" d="${d}"/><path class="shisen-path-line core" d="${d}"/>`;
     this.pathFadeTimer = window.setTimeout(() => {
@@ -550,8 +579,8 @@ export class BoardController {
       s.textContent = SPARKLES[Math.floor(Math.random() * SPARKLES.length)];
       const ang = (Math.PI * 2 * i) / count + Math.random() * 0.5;
       const dist = cell * (0.6 + Math.random() * 0.7);
-      s.style.left = `${(p.c + 0.5) * cell}px`;
-      s.style.top = `${(p.r + 0.5) * cell}px`;
+      s.style.left = `${cellCenter(p.c, this.gridCols) * cell}px`;
+      s.style.top = `${cellCenter(p.r, this.gridRows) * cell}px`;
       s.style.setProperty('--shisen-dx', `${Math.cos(ang) * dist}px`);
       s.style.setProperty('--shisen-dy', `${Math.sin(ang) * dist}px`);
       s.style.setProperty('--shisen-rot', `${Math.random() * 180 - 90}deg`);
@@ -634,12 +663,15 @@ export class BoardController {
     if (!tile) {
       const rect = this.boardEl.getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) return;
-      const cellW = rect.width / this.board.grid[0].length;
-      const cellH = rect.height / this.board.grid.length;
+      const cellW = rect.width / (this.gridCols - 1);
+      const cellH = rect.height / (this.gridRows - 1);
       const touchX = clientX - rect.left;
       const touchY = clientY - rect.top;
-      const c = Math.floor(touchX / cellW);
-      const r = Math.floor(touchY / cellH);
+      if (touchX < 0 || touchY < 0 || touchX > rect.width || touchY > rect.height) {
+        return;
+      }
+      const c = cellIndexAt(touchX / cellW, this.gridCols);
+      const r = cellIndexAt(touchY / cellH, this.gridRows);
 
       if (
         r >= 0 &&
