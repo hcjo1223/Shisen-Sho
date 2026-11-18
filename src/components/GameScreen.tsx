@@ -93,6 +93,7 @@ export interface GameScreenProps {
   stats: GameStats;
   onUpdateStats: (nextStats: GameStats) => void;
   onChangeDifficulty: (diff: DifficultyKey) => void;
+  onChangeGravity: (enabled: boolean) => void;
   onChangeTileTheme: (theme: TileThemeKey) => void;
   onChangeUiTheme: (uiTheme: ThemeSlug) => void;
   onChangeColorMode: (mode: ColorModeKey) => void;
@@ -113,7 +114,9 @@ interface ClearInfo {
 }
 
 /** 확인창을 거친 뒤 시작할 판 */
-type PendingStart = {mode: 'classic'; diff: DifficultyKey} | {mode: 'daily'};
+type PendingStart =
+  | {mode: 'classic'; diff: DifficultyKey; gravity: boolean}
+  | {mode: 'daily'};
 
 function isPortraitStage(stage: HTMLElement | null): boolean {
   const rect = stage?.getBoundingClientRect();
@@ -143,6 +146,7 @@ export function GameScreen({
   stats,
   onUpdateStats,
   onChangeDifficulty,
+  onChangeGravity,
   onChangeTileTheme,
   onChangeUiTheme,
   onChangeColorMode,
@@ -176,6 +180,10 @@ export function GameScreen({
   const dailyKeyRef = useRef('');
   /** 이번 판 최대 콤보 (공유 카드용) */
   const gameMaxComboRef = useRef(0);
+  /** 이번 판 중력 모드 여부 (판 시작 시 고정) */
+  const gravityRef = useRef(false);
+  /** 설정 시트·확인창이 열려 있는 동안 일시정지 */
+  const pausedRef = useRef(false);
 
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
@@ -191,6 +199,7 @@ export function GameScreen({
   const [clearInfo, setClearInfo] = useState<ClearInfo | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [mode, setMode] = useState<GameMode>('classic');
+  const [gravityOn, setGravityOn] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   /** 진행 중인 판을 버리고 새로 시작할지 확인 대기 중인 판 */
   const [pendingNewGame, setPendingNewGame] = useState<PendingStart | null>(
@@ -201,6 +210,9 @@ export function GameScreen({
     if (timerIdRef.current !== null) {
       clearInterval(timerIdRef.current);
       timerIdRef.current = null;
+      // 멈춘 순간까지의 시간을 정확히 남긴다 (250ms 틱 사이 손실 방지)
+      elapsedRef.current = Date.now() - startTimeRef.current;
+      setElapsedMs(elapsedRef.current);
     }
   }, []);
 
@@ -246,6 +258,7 @@ export function GameScreen({
     saveGame({
       mode: modeRef.current,
       dailyKey: modeRef.current === 'daily' ? dailyKeyRef.current : undefined,
+      gravity: gravityRef.current,
       difficulty: activeDiffRef.current,
       rows: board.rows,
       cols: board.cols,
@@ -262,6 +275,7 @@ export function GameScreen({
       diff: DifficultyKey,
       nextMode: GameMode,
       dailyKey: string,
+      gravity: boolean,
       saved?: SavedGame,
     ) => {
       gameIdRef.current += 1;
@@ -272,8 +286,10 @@ export function GameScreen({
       activeDiffRef.current = diff;
       modeRef.current = nextMode;
       dailyKeyRef.current = dailyKey;
+      gravityRef.current = gravity;
       gameMaxComboRef.current = 0;
       setMode(nextMode);
+      setGravityOn(gravity);
       selectedRef.current = null;
       hintsLeftRef.current = saved ? saved.hintsLeft : MAX_HINTS;
       shufflesLeftRef.current = saved ? saved.shufflesLeft : MAX_SHUFFLES;
@@ -291,19 +307,20 @@ export function GameScreen({
       setBestMsState(
         nextMode === 'daily'
           ? (loadDailyRecords()[dailyKey]?.bestMs ?? 0)
-          : getBestMs(diff),
+          : getBestMs(diff, gravity),
       );
       setRemaining(board.remaining());
 
       controllerRef.current?.build(board, settingsRef.current.theme);
-      startTimer();
+      if (!pausedRef.current) startTimer();
     },
     [clearPendingTimers, startTimer, stopTimer],
   );
 
   const startNewGame = useCallback(
-    (overrideDiff?: DifficultyKey) => {
+    (overrideDiff?: DifficultyKey, overrideGravity?: boolean) => {
       const activeDiff = overrideDiff ?? settingsRef.current.difficulty;
+      const gravity = overrideGravity ?? settingsRef.current.gravity;
       const diff = DIFFICULTIES[activeDiff];
       const portrait = isPortraitStage(stageRef.current);
 
@@ -311,7 +328,7 @@ export function GameScreen({
       const cols = portrait ? diff.rows : diff.cols;
 
       clearSavedGame();
-      resetRoundState(createBoard(rows, cols), activeDiff, 'classic', '');
+      resetRoundState(createBoard(rows, cols), activeDiff, 'classic', '', gravity);
     },
     [resetRoundState],
   );
@@ -328,7 +345,8 @@ export function GameScreen({
       ? createBoardFromGrid(diff.cols, diff.rows, transposeGrid(canonical.grid))
       : createBoardFromGrid(diff.rows, diff.cols, canonical.grid);
     clearSavedGame();
-    resetRoundState(board, DAILY_DIFFICULTY, 'daily', key);
+    // 챌린지는 기록 비교를 위해 항상 중력 없이 진행한다
+    resetRoundState(board, DAILY_DIFFICULTY, 'daily', key, false);
   }, [resetRoundState]);
 
   /** 저장된 판을 복원한다. 복원할 판이 없으면 false. */
@@ -345,6 +363,7 @@ export function GameScreen({
       saved.difficulty,
       savedMode,
       saved.dailyKey ?? '',
+      saved.gravity === true,
       saved,
     );
     if (!board.hasMoves()) {
@@ -365,9 +384,12 @@ export function GameScreen({
       if (start.diff !== settingsRef.current.difficulty) {
         onChangeDifficulty(start.diff);
       }
-      startNewGame(start.diff);
+      if (start.gravity !== settingsRef.current.gravity) {
+        onChangeGravity(start.gravity);
+      }
+      startNewGame(start.diff, start.gravity);
     },
-    [onChangeDifficulty, startDailyGame, startNewGame],
+    [onChangeDifficulty, onChangeGravity, startDailyGame, startNewGame],
   );
 
   const requestStart = useCallback(
@@ -386,7 +408,11 @@ export function GameScreen({
     requestStart(
       modeRef.current === 'daily'
         ? {mode: 'daily'}
-        : {mode: 'classic', diff: settingsRef.current.difficulty},
+        : {
+            mode: 'classic',
+            diff: settingsRef.current.difficulty,
+            gravity: settingsRef.current.gravity,
+          },
     );
   }, [requestStart]);
 
@@ -421,9 +447,9 @@ export function GameScreen({
         isBest = result.isBest;
         streak = currentStreak(result.records, dailyKey);
       } else {
-        const prevBest = getBestMs(activeDiff);
+        const prevBest = getBestMs(activeDiff, gravityRef.current);
         isBest = !prevBest || finalElapsed < prevBest;
-        if (isBest) setBestMs(activeDiff, finalElapsed);
+        if (isBest) setBestMs(activeDiff, finalElapsed, gravityRef.current);
       }
       if (isBest) setBestMsState(finalElapsed);
 
@@ -431,7 +457,7 @@ export function GameScreen({
         baseNext,
         activeDiff,
         finalElapsed,
-        {mode: finishedMode, hintsUsed, dailyStreak: streak},
+        {mode: finishedMode, gravity: gravityRef.current, hintsUsed, dailyStreak: streak},
       );
       statsRef.current = nextStats;
       onUpdateStats(nextStats);
@@ -452,7 +478,7 @@ export function GameScreen({
         const title =
           finishedMode === 'daily'
             ? `🗓️ 오늘의 챌린지 ${formatDailyShort(dailyKey)}`
-            : `${meta.icon} ${meta.name} 난이도`;
+            : `${meta.icon} ${meta.name}${gravityRef.current ? ' · 중력' : ''} 난이도`;
         const themeTiles = THEMES[settingsRef.current.theme].tiles;
         setClearInfo({
           isBest,
@@ -478,7 +504,7 @@ export function GameScreen({
   const handleTileSelect = useCallback(
     (p: Coord) => {
       const board = boardRef.current;
-      if (!board || finishedRef.current) return;
+      if (!board || finishedRef.current || pausedRef.current) return;
       Sound.unlock();
       controllerRef.current?.clearHints();
       dirtyRef.current = true;
@@ -522,6 +548,10 @@ export function GameScreen({
 
       controllerRef.current?.drawPath(path.points);
       controllerRef.current?.removeTiles(cur, p, nextCombo);
+      if (gravityRef.current) {
+        const moves = board.applyGravity();
+        if (moves.length) controllerRef.current?.moveTiles(moves);
+      }
       if (Sound.enabled) Sound.match(nextCombo);
       if (nextCombo >= 2) controllerRef.current?.showCombo(nextCombo);
 
@@ -607,9 +637,35 @@ export function GameScreen({
   const handleDifficultyChange = useCallback(
     (nextDiff: string) => {
       setIsSettingsOpen(false);
-      requestStart({mode: 'classic', diff: nextDiff as DifficultyKey});
+      requestStart({
+        mode: 'classic',
+        diff: nextDiff as DifficultyKey,
+        gravity: settingsRef.current.gravity,
+      });
     },
     [requestStart],
+  );
+
+  const handleGravityChange = useCallback(
+    (enabled: boolean) => {
+      if (modeRef.current === 'daily') {
+        // 챌린지 판은 그대로 두고 다음 일반 판부터 적용
+        onChangeGravity(enabled);
+        showToast(
+          enabled
+            ? '중력 모드는 다음 일반 판부터 적용돼요 (챌린지는 중력 없이 진행)'
+            : '중력 모드를 껐어요',
+        );
+        return;
+      }
+      setIsSettingsOpen(false);
+      requestStart({
+        mode: 'classic',
+        diff: settingsRef.current.difficulty,
+        gravity: enabled,
+      });
+    },
+    [onChangeGravity, requestStart, showToast],
   );
 
   const handleShare = useCallback(async () => {
@@ -689,11 +745,28 @@ export function GameScreen({
     };
   }, [clearPendingTimers, stopTimer]);
 
+  // 설정 시트나 확인창이 열리면 일시정지: 타이머를 멈추고 보드를 흐리게 가린다
+  const isPaused = isSettingsOpen || pendingNewGame != null;
+  useEffect(() => {
+    if (!boardRef.current) return;
+    if (isPaused === pausedRef.current) return;
+    pausedRef.current = isPaused;
+    controllerRef.current?.setPaused(isPaused);
+    if (isPaused) {
+      deselect();
+      stopTimer();
+      persistGame();
+    } else if (!finishedRef.current && !document.hidden) {
+      startTimer();
+    }
+  }, [deselect, isPaused, persistGame, startTimer, stopTimer]);
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const target = e.target as HTMLElement | null;
       if (target && target.closest('input, textarea, select')) return;
+      if (pausedRef.current) return;
 
       if (e.key === 'h' || e.key === 'H') {
         handleHint();
@@ -710,7 +783,7 @@ export function GameScreen({
       if (document.hidden) {
         persistGame();
         stopTimer();
-      } else if (!finishedRef.current) {
+      } else if (!finishedRef.current && !pausedRef.current) {
         startTimer();
       }
     };
@@ -753,6 +826,7 @@ export function GameScreen({
                   {mode === 'daily' && (
                     <Text size="sm">🗓️</Text>
                   )}
+                  {gravityOn && <Text size="sm">⬇️</Text>}
                   <HStack gap={1} align="center">
                     <Text type="supporting" size="xsm">
                       남은
@@ -950,6 +1024,13 @@ export function GameScreen({
             options={TILE_THEME_SELECTOR_OPTIONS}
             value={settings.theme}
             onChange={handleTileThemeChange}
+          />
+          <Switch
+            label="중력 모드 (바꾸면 새 판이 시작돼요)"
+            labelPosition="start"
+            labelSpacing="spread"
+            value={settings.gravity}
+            onChange={checked => handleGravityChange(checked)}
           />
           <Selector
             label="UI 테마"

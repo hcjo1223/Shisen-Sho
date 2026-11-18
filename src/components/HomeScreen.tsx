@@ -65,6 +65,7 @@ export interface HomeScreenProps {
   onResumeGame: () => void;
   onStartDaily: () => void;
   onSelectDifficulty: (diff: DifficultyKey) => void;
+  onToggleGravity: (enabled: boolean) => void;
   onSelectTileTheme: (theme: TileThemeKey) => void;
   onChangeUiTheme: (uiTheme: ThemeSlug) => void;
   onChangeColorMode: (mode: ColorModeKey) => void;
@@ -80,6 +81,7 @@ export function HomeScreen({
   onResumeGame,
   onStartDaily,
   onSelectDifficulty,
+  onToggleGravity,
   onSelectTileTheme,
   onChangeUiTheme,
   onChangeColorMode,
@@ -206,7 +208,7 @@ export function HomeScreen({
                     {DIFFICULTY_ORDER.map(key => {
                       const meta = DIFFICULTY_META[key];
                       const isActive = settings.difficulty === key;
-                      const best = formatTime(getBestMs(key));
+                      const best = formatTime(getBestMs(key, settings.gravity));
                       return (
                         <SelectableCard
                           key={key}
@@ -241,6 +243,17 @@ export function HomeScreen({
                       );
                     })}
                   </VStack>
+
+                  <Divider />
+
+                  <Switch
+                    label="⬇️ 중력 모드"
+                    description="짝을 지우면 위 타일이 아래로 떨어져요 · 기록은 따로 남아요"
+                    labelPosition="start"
+                    labelSpacing="spread"
+                    value={settings.gravity}
+                    onChange={checked => onToggleGravity(checked)}
+                  />
                 </VStack>
               </Card>
 

@@ -116,6 +116,52 @@ const BOARD_CSS = `
     animation: shisen-pop-out 0.34s ease-in forwards;
   }
 
+  .shisen-tile.falling {
+    animation: shisen-fall var(--shisen-fall-ms, 260ms) cubic-bezier(.45, 0, .7, 1.25) both;
+    animation-delay: 110ms;
+  }
+
+  /* 일시정지: 보드를 흐리게 페이드해 가리고 안내 문구를 띄운다 */
+  .shisen-board-frame {
+    transition: opacity 0.28s ease, filter 0.28s ease;
+  }
+
+  .shisen-stage-root.paused .shisen-board-frame {
+    opacity: 0.12;
+    filter: blur(calc(var(--shisen-cell) * 0.16)) saturate(0.6);
+    pointer-events: none;
+  }
+
+  /* 설정 시트가 아래에서 올라와 가리므로 문구는 위쪽에 둔다 */
+  .shisen-pause {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    justify-items: center;
+    align-content: start;
+    padding-top: clamp(12px, 3vh, 40px);
+    gap: 6px;
+    font-family: var(--font-family-heading, "Jua", sans-serif);
+    font-size: clamp(1.6rem, 6vw, 2.6rem);
+    color: var(--color-text-primary, #4a3430);
+    opacity: 0;
+    transform: scale(0.94);
+    transition: opacity 0.28s ease, transform 0.28s ease;
+    pointer-events: none;
+    z-index: 6;
+  }
+
+  .shisen-pause small {
+    font-family: var(--font-family-body, sans-serif);
+    font-size: 0.45em;
+    color: var(--color-text-secondary, #7c6561);
+  }
+
+  .shisen-stage-root.paused .shisen-pause {
+    opacity: 1;
+    transform: scale(1);
+  }
+
   .shisen-tile.flip {
     animation: shisen-flip 0.5s ease both;
     animation-delay: var(--shisen-delay, 0ms);
@@ -230,6 +276,15 @@ const BOARD_CSS = `
     }
   }
 
+  @keyframes shisen-fall {
+    from {
+      transform: translateY(calc(var(--shisen-cell) * var(--shisen-fall-cells, 1) * -1));
+    }
+    to {
+      transform: translateY(calc(var(--shisen-cell) * -0.03));
+    }
+  }
+
   @keyframes shisen-flip {
     0% { transform: rotateY(0); }
     50% { transform: rotateY(90deg) scale(0.9); }
@@ -279,6 +334,7 @@ const BOARD_CSS = `
     .shisen-tile.shake,
     .shisen-tile.removing,
     .shisen-tile.flip,
+    .shisen-tile.falling,
     .shisen-path-line.core,
     .shisen-particle,
     .shisen-combo.show {
@@ -326,6 +382,7 @@ export class BoardController {
   private onTileSelect: (pos: Coord) => void;
   private stageRoot: HTMLDivElement;
   private comboEl: HTMLDivElement;
+  private pauseEl: HTMLDivElement;
   private frameEl: HTMLDivElement;
   private boardEl: HTMLDivElement;
   private pathEl: SVGSVGElement;
@@ -353,6 +410,11 @@ export class BoardController {
     this.comboEl.className = 'shisen-combo';
     this.comboEl.setAttribute('aria-live', 'polite');
 
+    this.pauseEl = document.createElement('div');
+    this.pauseEl.className = 'shisen-pause';
+    this.pauseEl.setAttribute('aria-hidden', 'true');
+    this.pauseEl.innerHTML = '<span>⏸ 일시정지</span><small>설정을 닫으면 이어서 해요</small>';
+
     this.frameEl = document.createElement('div');
     this.frameEl.className = 'shisen-board-frame';
 
@@ -375,6 +437,7 @@ export class BoardController {
 
     this.stageRoot.appendChild(this.comboEl);
     this.stageRoot.appendChild(this.frameEl);
+    this.stageRoot.appendChild(this.pauseEl);
     this.stageEl.appendChild(this.stageRoot);
 
     this.handlePointerDown = this.handlePointerDown.bind(this);
@@ -404,10 +467,13 @@ export class BoardController {
     return TINTS[(v - 1) % TINTS.length];
   }
 
+  /** 칸의 현재 타일 (사라지는 중인 타일은 제외) */
   private tileEl(p: Coord): HTMLButtonElement | null {
     const cell = this.cells[p.r]?.[p.c];
-    if (!cell || !cell.firstElementChild) return null;
-    return cell.firstElementChild as HTMLButtonElement;
+    if (!cell) return null;
+    return cell.querySelector<HTMLButtonElement>(
+      ':scope > .shisen-tile:not(.removing)',
+    );
   }
 
   private placeTile(
@@ -632,6 +698,38 @@ export class BoardController {
         }
       }
     }
+  }
+
+  /**
+   * 중력 모드: 타일 요소를 새 칸으로 옮기고, 떨어진 거리만큼 위에서 내려오는 애니메이션을 준다.
+   * 이동은 즉시 반영되므로 탭 좌표와 보드 상태가 어긋나지 않는다.
+   */
+  moveTiles(moves: Array<{from: Coord; to: Coord}>): void {
+    // 같은 열 안에서는 아래쪽 이동부터 처리되도록 정렬 (목적지 칸이 비어 있도록)
+    const ordered = [...moves].sort((x, y) => y.to.r - x.to.r);
+    for (const {from, to} of ordered) {
+      const el = this.tileEl(from);
+      const target = this.cells[to.r]?.[to.c];
+      if (!el || !target) continue;
+      el.classList.remove('selected', 'hint', 'shake', 'flip', 'falling');
+      el.id = `tile-${to.r}-${to.c}`;
+      el.dataset.r = String(to.r);
+      el.dataset.c = String(to.c);
+      const cells = to.r - from.r;
+      el.style.setProperty('--shisen-fall-cells', String(cells));
+      el.style.setProperty('--shisen-fall-ms', `${Math.round(170 + 55 * Math.sqrt(cells))}ms`);
+      target.appendChild(el);
+      void el.offsetWidth;
+      el.classList.add('falling');
+      el.addEventListener('animationend', () => el.classList.remove('falling'), {
+        once: true,
+      });
+    }
+  }
+
+  /** 일시정지 표시: 보드를 흐리게 가리고 안내 문구를 띄운다. */
+  setPaused(on: boolean): void {
+    this.stageRoot.classList.toggle('paused', on);
   }
 
   showCombo(n: number): void {

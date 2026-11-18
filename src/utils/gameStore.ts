@@ -146,6 +146,7 @@ export const BADGES: readonly BadgeInfo[] = [
   {id: 'daily_first', icon: '🗓️', name: '오늘의 도전자', desc: '오늘의 챌린지 첫 클리어'},
   {id: 'streak_7', icon: '🌈', name: '일주일 개근', desc: '오늘의 챌린지 7일 연속 클리어'},
   {id: 'no_hint', icon: '🧠', name: '혼자서도 척척', desc: '힌트 없이 보통 이상 클리어'},
+  {id: 'gravity_clear', icon: '🍎', name: '뉴턴의 사과', desc: '중력 모드 클리어'},
 ];
 
 export const CLEAR_MESSAGES: readonly string[] = [
@@ -163,6 +164,8 @@ export interface GameSettings {
   bgm: boolean;
   uiTheme: ThemeSlug;
   colorMode: ColorModeKey;
+  /** 중력 모드: 짝을 지우면 위 타일이 아래로 떨어진다 (일반 판에만 적용) */
+  gravity: boolean;
 }
 
 export interface GameStats {
@@ -183,6 +186,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   bgm: true,
   uiTheme: 'malang',
   colorMode: 'light',
+  gravity: false,
 };
 
 const VALID_UI_THEMES = new Set<ThemeSlug>([
@@ -230,6 +234,7 @@ export function loadSettings(): GameSettings {
       bgm: raw.bgm !== false,
       uiTheme,
       colorMode,
+      gravity: raw.gravity === true,
     };
   } catch {
     return {...DEFAULT_SETTINGS};
@@ -278,22 +283,23 @@ export function saveStats(stats: GameStats): void {
   }
 }
 
-export function bestKey(diff: DifficultyKey): string {
-  return `shisen-best-${diff}`;
+/** 난이도별 최고 기록 키 (중력 모드는 따로 기록) */
+export function bestKey(diff: DifficultyKey, gravity = false): string {
+  return gravity ? `shisen-best-${diff}-gravity` : `shisen-best-${diff}`;
 }
 
-export function getBestMs(diff: DifficultyKey): number {
+export function getBestMs(diff: DifficultyKey, gravity = false): number {
   try {
-    const v = Number(localStorage.getItem(bestKey(diff)));
+    const v = Number(localStorage.getItem(bestKey(diff, gravity)));
     return Number.isFinite(v) && v > 0 ? v : 0;
   } catch {
     return 0;
   }
 }
 
-export function setBestMs(diff: DifficultyKey, ms: number): void {
+export function setBestMs(diff: DifficultyKey, ms: number, gravity = false): void {
   try {
-    localStorage.setItem(bestKey(diff), String(ms));
+    localStorage.setItem(bestKey(diff, gravity), String(ms));
   } catch {
     // Ignore storage quota errors
   }
@@ -317,6 +323,7 @@ export function formatTimerClock(ms: number): string {
 
 export interface ClearContext {
   mode: GameMode;
+  gravity?: boolean;
   hintsUsed: number;
   /** 일일 챌린지 현재 연속 일수 */
   dailyStreak?: number;
@@ -348,6 +355,7 @@ export function evaluateUnlockedBadges(
   if (stats.totalClears >= 10) grant('clears_10');
   if (stats.matchedPairs >= 200) grant('pairs_200');
   if (context?.mode === 'daily') grant('daily_first');
+  if (context?.gravity) grant('gravity_clear');
   if ((context?.dailyStreak ?? 0) >= 7) grant('streak_7');
   if (context && context.hintsUsed === 0 && difficulty !== 'easy') {
     grant('no_hint');
@@ -375,6 +383,8 @@ export interface SavedGame {
   mode?: GameMode;
   /** mode === 'daily'일 때 챌린지 날짜 'YYYY-MM-DD' */
   dailyKey?: string;
+  /** 중력 모드로 진행 중인 판 */
+  gravity?: boolean;
   difficulty: DifficultyKey;
   rows: number;
   cols: number;
