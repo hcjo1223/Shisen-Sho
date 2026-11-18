@@ -124,12 +124,14 @@ const BOARD_CSS = `
     animation: shisen-pop-out 0.34s ease-in forwards;
   }
 
-  /* 중력 낙하: 바닥 기준으로 살짝 눌렸다 자리 잡도록 transform-origin을 아래로 */
+  /*
+   * 중력 낙하: 위치(translateY)만 움직인다.
+   * 크기 변형(눌림·반동)이나 will-change 해제는 끝나는 순간 이모지를 다시 그리며
+   * 깜빡임처럼 보이므로 쓰지 않는다.
+   */
   .shisen-tile.falling {
-    transform-origin: 50% 100%;
-    animation: shisen-fall var(--shisen-fall-ms, 360ms) linear both;
+    animation: shisen-fall var(--shisen-fall-ms, 320ms) cubic-bezier(.45, 0, .2, 1) both;
     animation-delay: var(--shisen-fall-delay, 120ms);
-    will-change: transform;
   }
 
   /* 일시정지: 보드를 흐리게 페이드해 가리고 안내 문구를 띄운다 */
@@ -287,24 +289,12 @@ const BOARD_CSS = `
     }
   }
 
-  /*
-   * 부드러운 낙하: 천천히 출발해 가속(ease-in) → 착지하며 살짝 눌림 →
-   * 조금 튀어올랐다 제자리. 구간마다 timing function을 따로 준다.
-   */
+  /* 부드러운 낙하: 천천히 출발해 가속한 뒤, 바닥 근처에서 감속하며 반동 없이 내려앉는다 */
   @keyframes shisen-fall {
-    0% {
+    from {
       transform: translateY(calc(var(--shisen-cell) * (var(--shisen-fall-cells, 1) * -1 - 0.03)));
-      animation-timing-function: cubic-bezier(.5, 0, .85, .55);
     }
-    72% {
-      transform: translateY(calc(var(--shisen-cell) * 0.01)) scale(1.05, 0.93);
-      animation-timing-function: cubic-bezier(.25, .6, .4, 1);
-    }
-    86% {
-      transform: translateY(calc(var(--shisen-cell) * -0.07)) scale(0.98, 1.02);
-      animation-timing-function: ease-in-out;
-    }
-    100% {
+    to {
       transform: translateY(calc(var(--shisen-cell) * -0.03));
     }
   }
@@ -750,7 +740,7 @@ export class BoardController {
       const rank = rankInColumn.get(to.c) ?? 0;
       rankInColumn.set(to.c, rank + 1);
       el.style.setProperty('--shisen-fall-cells', String(cells));
-      el.style.setProperty('--shisen-fall-ms', `${Math.round(280 + 90 * Math.sqrt(cells))}ms`);
+      el.style.setProperty('--shisen-fall-ms', `${Math.round(240 + 90 * Math.sqrt(cells))}ms`);
       el.style.setProperty('--shisen-fall-delay', `${120 + rank * 35}ms`);
       // 클래스를 먼저 붙인 뒤 옮겨, 새 칸에 놓이는 첫 프레임부터 낙하 시작 위치에 있게 한다
       el.classList.add('falling');
