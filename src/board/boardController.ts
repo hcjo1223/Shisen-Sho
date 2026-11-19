@@ -51,17 +51,26 @@ const BOARD_CSS = `
     position: relative;
   }
 
-  /* 어려움 모드: 판 꼭짓점 칸을 막는 벽돌 (지울 수 없고 길도 못 지나간다) */
+  /* 어려움 모드: 판 꼭짓점 칸을 막는 벽돌 (지울 수 없고 길도 못 지나간다)
+     타일처럼 보이지 않도록 칸을 꽉 채우고, 보드 배경과 같은 색 계열에 줄눈 무늬만 넣는다 */
   .shisen-brick {
     position: absolute;
-    inset: calc(var(--shisen-cell) * 0.035);
-    display: grid;
-    place-items: center;
-    border-radius: calc(var(--shisen-cell) * 0.16);
-    background: color-mix(in srgb, var(--color-border-emphasized, #d8b8ae) 45%, transparent);
-    font-size: calc(var(--shisen-cell) * 0.58);
-    line-height: 1;
+    inset: 0;
+    border-radius: calc(var(--shisen-cell) * 0.06);
+    background: color-mix(in srgb, var(--color-background-muted, #ffe9e1) 86%, var(--color-border-emphasized, #d8b8ae));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border, #e7cdc4) 70%, transparent);
     pointer-events: none;
+  }
+
+  /* 줄눈: 배경보다 살짝 진한 선 (SVG 무늬를 마스크로 써서 테마 색을 그대로 따른다) */
+  .shisen-brick::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: color-mix(in srgb, var(--color-border-emphasized, #d8b8ae) 75%, transparent);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M0 .6H20M0 10.6H20M.6 0V10M10.6 10V20' stroke='black' stroke-width='1.2' fill='none'/%3E%3C/svg%3E") 0 0 / calc(var(--shisen-cell) * 0.5) calc(var(--shisen-cell) * 0.5) repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M0 .6H20M0 10.6H20M.6 0V10M10.6 10V20' stroke='black' stroke-width='1.2' fill='none'/%3E%3C/svg%3E") 0 0 / calc(var(--shisen-cell) * 0.5) calc(var(--shisen-cell) * 0.5) repeat;
   }
 
   .shisen-tile {
@@ -744,7 +753,6 @@ export class BoardController {
         else if (v < 0) {
           const brick = document.createElement('div');
           brick.className = 'shisen-brick';
-          brick.textContent = '🧱';
           brick.setAttribute('aria-hidden', 'true');
           this.cells[r][c].appendChild(brick);
         }
