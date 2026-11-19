@@ -9,11 +9,13 @@
   const DIFFICULTIES = {
     easy:   { name: '쉬움',  rows: 6, cols: 8 },   // 48개 (비율 3:4)
     normal: { name: '보통',  rows: 8, cols: 10 },  // 80개 (비율 4:5)
-    // 어려움: 판 크기는 보통과 같지만 36종(32종×2장 + 4종×4장)을 섞는다.
-    // 대부분의 타일이 짝이 딱 하나뿐이라 찾기 어렵고 순서를 잘못 고르면 쉽게 막힌다.
-    hard:   { name: '어려움', rows: 8, cols: 10, kinds: 36 }, // 80개
+    // 어려움: 판 크기는 보통과 같지만
+    //  - 테마 그림 36종 중 매판 30종을 무작위로 골라 20종×2장 + 10종×4장으로 깐다
+    //  - 바깥 통로 네 모서리에 ㄱ자 벽돌을 세워 모서리로 돌아가는 길을 막는다
+    hard:   { name: '어려움', rows: 8, cols: 10, kinds: 30, pool: 36, bricks: true }, // 80개
   };
   const COPIES = 4; // 이모지 한 종류당 4장
+  const BRICK = -1; // 길을 막는 벽돌 (타일이 아니라 지울 수 없다)
 
   function shuffleArray(arr, rng) {
     const rand = rng || Math.random;
@@ -31,8 +33,11 @@
      * @param {() => number} [rng]
      * @param {number} [kinds] 타일 종류 수. 생략하면 종류당 4장.
      *   (타일 수/4)보다 크면 일부 종류를 2장만 넣는다: 4장 종류 = (타일 수 - 2*kinds)/2
+     * @param {{pool?: number, bricks?: boolean}} [opts]
+     *   pool: 1..pool 그림 중 kinds 종을 무작위로 고른다 (생략하면 1..kinds)
+     *   bricks: 바깥 통로 네 모서리에 ㄱ자 벽돌을 세운다
      */
-    constructor(rows, cols, rng, kinds) {
+    constructor(rows, cols, rng, kinds, opts) {
       const total = rows * cols;
       if (total % COPIES !== 0) throw new Error('타일 수는 4의 배수여야 합니다');
       const k = kinds || total / COPIES;
@@ -41,6 +46,8 @@
       this.cols = cols;
       this.rng = rng || Math.random;
       this.kinds = k;
+      this.pool = Math.max(k, (opts && opts.pool) || k);
+      this.bricks = Boolean(opts && opts.bricks);
       // 앞쪽 종류부터 4장, 나머지는 2장 (어느 종류가 4장인지는 셔플로 감춰진다)
       this.quadKinds = (total - 2 * k) / 2;
       this.history = [];
@@ -50,11 +57,15 @@
 
     /** 패딩 포함 (rows+2) x (cols+2) 그리드에 타일을 새로 깐다 */
     generate() {
+      // 쓸 그림 번호 고르기 (pool > kinds 일 때만 무작위로 뽑는다)
+      let ids = [];
+      for (let k = 1; k <= this.pool; k++) ids.push(k);
+      if (this.pool > this.kinds) ids = shuffleArray(ids, this.rng).slice(0, this.kinds);
       const tiles = [];
-      for (let k = 1; k <= this.kinds; k++) {
-        const copies = k <= this.quadKinds ? COPIES : 2;
-        for (let n = 0; n < copies; n++) tiles.push(k);
-      }
+      ids.forEach((id, i) => {
+        const copies = i < this.quadKinds ? COPIES : 2;
+        for (let n = 0; n < copies; n++) tiles.push(id);
+      });
       for (let attempt = 0; attempt < 200; attempt++) {
         shuffleArray(tiles, this.rng);
         this.grid = [];
@@ -67,16 +78,29 @@
           }
           this.grid.push(row);
         }
+        if (this.bricks) this.placeBricks();
         if (this.hasMoves()) break;
       }
       this.history = [];
+    }
+
+    /** 바깥 통로(패딩) 네 모서리에 꼭짓점 + 양옆 한 칸씩, ㄱ자 벽돌을 세운다 */
+    placeBricks() {
+      const last = this.rows + 1;
+      const right = this.cols + 1;
+      const corners = [[0, 0, 1, 1], [0, right, 1, -1], [last, 0, -1, 1], [last, right, -1, -1]];
+      for (const [r, c, dr, dc] of corners) {
+        this.grid[r][c] = BRICK;
+        this.grid[r + dr][c] = BRICK;
+        this.grid[r][c + dc] = BRICK;
+      }
     }
 
     get(r, c) { return this.grid[r][c]; }
 
     remaining() {
       let n = 0;
-      for (const row of this.grid) for (const v of row) if (v !== 0) n++;
+      for (const row of this.grid) for (const v of row) if (v > 0) n++;
       return n;
     }
 
@@ -142,7 +166,7 @@
       const values = [];
       for (let r = 0; r < this.grid.length; r++) {
         for (let c = 0; c < this.grid[r].length; c++) {
-          if (this.grid[r][c] !== 0) {
+          if (this.grid[r][c] > 0) {
             cells.push({ r, c });
             values.push(this.grid[r][c]);
           }
@@ -159,7 +183,7 @@
     }
   }
 
-  const api = { Board, DIFFICULTIES, shuffleArray };
+  const api = { Board, DIFFICULTIES, shuffleArray, BRICK };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ShisenBoard = api;
 })(typeof window !== 'undefined' ? window : globalThis);

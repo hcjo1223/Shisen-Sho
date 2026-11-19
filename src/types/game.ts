@@ -19,6 +19,15 @@ export interface DifficultyConfig {
   rows: number;
   cols: number;
   kinds?: number;
+  /** 1..pool 그림 중 kinds 종을 매판 무작위로 고른다 */
+  pool?: number;
+  /** 바깥 통로 네 모서리에 벽돌을 세운다 */
+  bricks?: boolean;
+}
+
+export interface BoardOptions {
+  pool?: number;
+  bricks?: boolean;
 }
 
 export interface BoardInstance {
@@ -41,7 +50,13 @@ export interface BoardInstance {
 }
 
 export interface BoardConstructor {
-  new (rows: number, cols: number, rng?: () => number, kinds?: number): BoardInstance;
+  new (
+    rows: number,
+    cols: number,
+    rng?: () => number,
+    kinds?: number,
+    opts?: BoardOptions,
+  ): BoardInstance;
 }
 
 export interface TileThemeConfig {

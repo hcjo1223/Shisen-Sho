@@ -17,6 +17,7 @@ import {todayKey} from './daily';
 import type {
   BoardConstructor,
   BoardInstance,
+  BoardOptions,
   DifficultyConfig,
   SoundEngine,
   TileThemeConfig,
@@ -29,8 +30,22 @@ export function createBoard(
   cols: number,
   rng?: () => number,
   kinds?: number,
+  opts?: BoardOptions,
 ): BoardInstance {
-  return new BoardClass(rows, cols, rng, kinds);
+  return new BoardClass(rows, cols, rng, kinds, opts);
+}
+
+/** 난이도 설정(종류 수·그림 풀·벽돌)대로 새 판을 만든다 */
+export function createBoardFor(
+  diff: DifficultyConfig,
+  rows: number,
+  cols: number,
+  rng?: () => number,
+): BoardInstance {
+  return createBoard(rows, cols, rng, diff.kinds, {
+    pool: diff.pool,
+    bricks: diff.bricks,
+  });
 }
 
 export const DIFFICULTIES = RawDIFFICULTIES as Record<
@@ -181,7 +196,7 @@ export const DIFFICULTY_META: Record<
     key: 'hard',
     icon: '👑',
     name: '어려움',
-    desc: '80개 타일 (8×10 · 36종 · 힌트 3회)',
+    desc: '80개 타일 (8×10 · 30종 · 모서리 벽돌 · 힌트 3회)',
     tiles: 80,
     gridLabel: '8×10',
   },
@@ -462,8 +477,9 @@ function isValidSavedGame(raw: unknown): raw is SavedGame {
   for (const row of grid) {
     if (!Array.isArray(row) || row.length !== (cols as number) + 2) return false;
     for (const v of row) {
-      if (!Number.isInteger(v) || v < 0 || v > kinds) return false;
-      if (v !== 0) remaining++;
+      // -1 = 벽돌
+      if (!Number.isInteger(v) || v < -1 || v > kinds) return false;
+      if (v > 0) remaining++;
     }
   }
   if (remaining === 0 || remaining % 2 !== 0) return false;
@@ -505,7 +521,7 @@ export function clearSavedGame(): void {
 
 export function countRemaining(grid: number[][]): number {
   let n = 0;
-  for (const row of grid) for (const v of row) if (v !== 0) n++;
+  for (const row of grid) for (const v of row) if (v > 0) n++;
   return n;
 }
 

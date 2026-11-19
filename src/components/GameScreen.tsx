@@ -58,6 +58,7 @@ import {
   TILE_THEME_ORDER,
   clearSavedGame,
   createBoard,
+  createBoardFor,
   createBoardFromGrid,
   evaluateUnlockedBadges,
   loadSavedGame,
@@ -325,7 +326,7 @@ export function GameScreen({
       const cols = portrait ? diff.rows : diff.cols;
 
       clearSavedGame();
-      resetRoundState(createBoard(rows, cols, undefined, diff.kinds), activeDiff, 'classic', '', gravity);
+      resetRoundState(createBoardFor(diff, rows, cols), activeDiff, 'classic', '', gravity);
     },
     [resetRoundState],
   );

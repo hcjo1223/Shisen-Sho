@@ -51,6 +51,22 @@ const BOARD_CSS = `
     position: relative;
   }
 
+  /* 어려움 모드: 바깥 통로 모서리를 막는 벽돌 (지울 수 없고 길도 못 지나간다) */
+  .shisen-brick {
+    position: absolute;
+    inset: 1px;
+    border-radius: calc(var(--shisen-cell) * 0.08);
+    background-color: var(--color-border-emphasized, #c98b6b);
+    background-image:
+      linear-gradient(color-mix(in srgb, var(--color-background-muted, #ffe9e1) 70%, transparent) 0 0),
+      linear-gradient(90deg, color-mix(in srgb, var(--color-background-muted, #ffe9e1) 70%, transparent) 0 0);
+    background-size: 100% 1.5px, 1.5px 50%;
+    background-position: 0 50%, 50% 0;
+    background-repeat: no-repeat;
+    box-shadow: inset 0 -2px 0 color-mix(in srgb, black 18%, transparent);
+    pointer-events: none;
+  }
+
   .shisen-tile {
     position: absolute;
     inset: calc(var(--shisen-cell) * 0.035);
@@ -727,7 +743,13 @@ export class BoardController {
     for (let r = 0; r < this.gridRows; r++) {
       for (let c = 0; c < this.gridCols; c++) {
         const v = board.get(r, c);
-        if (v) this.placeTile(r, c, v, (r + c) * 16);
+        if (v > 0) this.placeTile(r, c, v, (r + c) * 16);
+        else if (v < 0) {
+          const brick = document.createElement('div');
+          brick.className = 'shisen-brick';
+          brick.setAttribute('aria-hidden', 'true');
+          this.cells[r][c].appendChild(brick);
+        }
       }
     }
 
@@ -915,7 +937,7 @@ export class BoardController {
       for (let c = 0; c < this.gridCols; c++) {
         const v = board.get(r, c);
         const el = this.tileEl({r, c});
-        if (!v) {
+        if (v <= 0) {
           if (el) el.remove();
           continue;
         }
@@ -940,7 +962,7 @@ export class BoardController {
       for (let c = 0; c < this.gridCols; c++) {
         const v = board.get(r, c);
         const el = this.tileEl({r, c});
-        if (v && el) {
+        if (v > 0 && el) {
           this.applyTileVisual(el, v);
         }
       }
@@ -1028,7 +1050,7 @@ export class BoardController {
         c >= 0 &&
         c < this.board.grid[0].length
       ) {
-        if (this.board.get(r, c) !== 0) {
+        if (this.board.get(r, c) > 0) {
           tile = this.tileEl({r, c});
         } else {
           let minDist = Infinity;
@@ -1042,7 +1064,7 @@ export class BoardController {
                 nr < this.board.grid.length &&
                 nc >= 0 &&
                 nc < this.board.grid[0].length &&
-                this.board.get(nr, nc) !== 0
+                this.board.get(nr, nc) > 0
               ) {
                 const el = this.tileEl({r: nr, c: nc});
                 if (el && !el.classList.contains('removing')) {
