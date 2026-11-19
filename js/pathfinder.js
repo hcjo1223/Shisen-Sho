@@ -2,7 +2,7 @@
  * pathfinder.js — 사천성 2회 이하 꺾임 경로 탐색
  *
  * engineer-myoa/Sichuan-HELPER(helper.py)의 접근을 계승:
- *   - 맵은 숫자 2차원 배열, 0 = 빈 칸(길), 그 외 = 타일(장애물)
+ *   - 맵은 숫자 2차원 배열, 0 = 빈 칸(길), 양수 = 타일, 음수 = 벽돌 (둘 다 장애물)
  *   - 외곽 1줄을 0 으로 패딩해서 보드 바깥으로 돌아가는 연결을 허용
  *   - BFS로 탐색하면서 꺾임 횟수를 추적하고 2회 초과 시 가지치기
  *   - 보드 전체를 훑어 연결 가능한 쌍을 찾아냄 (힌트 / 막힘 감지)
@@ -34,7 +34,7 @@
   function findPath(board, a, b) {
     if (a.r === b.r && a.c === b.c) return null;
     const v = board[a.r][a.c];
-    if (v === 0 || v !== board[b.r][b.c]) return null;
+    if (v <= 0 || v !== board[b.r][b.c]) return null;
 
     const rows = board.length;
     const cols = board[0].length;
@@ -113,7 +113,7 @@
     for (let r = 0; r < board.length; r++) {
       for (let c = 0; c < board[r].length; c++) {
         const v = board[r][c];
-        if (v === 0) continue;
+        if (v <= 0) continue; // 빈 칸·벽돌
         if (!groups.has(v)) groups.set(v, []);
         groups.get(v).push({ r, c });
       }

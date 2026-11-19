@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build && node scripts/sync-root-build.mjs",
     "preview": "vite preview",
-    "test": "node tests/pathfinder.test.js && node tests/gravity.test.js && node --no-warnings tests/daily.test.mjs",
+    "test": "node tests/pathfinder.test.js && node tests/gravity.test.js && node tests/hard.test.js && node --no-warnings tests/daily.test.mjs",
     "astryx": "node node_modules/@astryxdesign/cli/clients/cli/bin/astryx.mjs",
     "typecheck": "tsc --noEmit -p ."
   },
