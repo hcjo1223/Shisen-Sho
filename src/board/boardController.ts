@@ -51,17 +51,44 @@ const BOARD_CSS = `
     position: relative;
   }
 
-  /* 어려움 모드: 판 꼭짓점 칸을 막는 벽돌 (지울 수 없고 길도 못 지나간다) */
+  /* 어려움 모드: 판 꼭짓점 칸을 막는 벽돌 (지울 수 없고 길도 못 지나간다)
+     칸을 꽉 채운 벽 덩어리. 보드 배경 색 계열로 칠하고, 타일처럼 아래 두께와 그림자를 줘서 앞으로 튀어나와 보이게 한다 */
   .shisen-brick {
     position: absolute;
-    inset: calc(var(--shisen-cell) * 0.035);
-    display: grid;
-    place-items: center;
-    border-radius: calc(var(--shisen-cell) * 0.16);
-    background: color-mix(in srgb, var(--color-border-emphasized, #d8b8ae) 45%, transparent);
-    font-size: calc(var(--shisen-cell) * 0.58);
-    line-height: 1;
+    inset: 0;
+    overflow: hidden;
+    border-radius: calc(var(--shisen-cell) * 0.08);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 55%),
+      color-mix(in srgb, var(--color-background-muted, #ffe9e1) 40%, var(--color-border-emphasized, #d8b8ae));
+    box-shadow:
+      inset 0 1.5px 0 rgba(255, 255, 255, 0.55),
+      inset 0 -1.5px 0 color-mix(in srgb, var(--color-border-emphasized, #d8b8ae) 70%, black),
+      0 calc(var(--shisen-cell) * 0.07) 0 color-mix(in srgb, var(--color-border-emphasized, #d8b8ae) 75%, black),
+      0 calc(var(--shisen-cell) * 0.11) calc(var(--shisen-cell) * 0.16) var(--color-shadow, rgba(166, 104, 86, 0.28));
+    transform: translateY(calc(var(--shisen-cell) * -0.04));
     pointer-events: none;
+  }
+
+  /* 벽돌마다 아래쪽 그늘 (줄눈 무늬를 살짝 위로 밀어 진하게 깔아 벽돌이 도드라져 보이게) */
+  .shisen-brick::before,
+  .shisen-brick::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M0 .9H20M0 10.9H20M.9 0V10M10.9 10V20' stroke='black' stroke-width='1.8' fill='none'/%3E%3C/svg%3E") 0 0 / calc(var(--shisen-cell) * 0.5) calc(var(--shisen-cell) * 0.5) repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M0 .9H20M0 10.9H20M.9 0V10M10.9 10V20' stroke='black' stroke-width='1.8' fill='none'/%3E%3C/svg%3E") 0 0 / calc(var(--shisen-cell) * 0.5) calc(var(--shisen-cell) * 0.5) repeat;
+  }
+
+  .shisen-brick::before {
+    background: color-mix(in srgb, var(--color-border-emphasized, #d8b8ae) 55%, black);
+    opacity: 0.45;
+    translate: 0 -1.5px;
+  }
+
+  /* 줄눈: 배경과 같은 밝은 색 */
+  .shisen-brick::after {
+    background: color-mix(in srgb, var(--color-background-muted, #ffe9e1) 75%, white);
   }
 
   .shisen-tile {
@@ -744,7 +771,6 @@ export class BoardController {
         else if (v < 0) {
           const brick = document.createElement('div');
           brick.className = 'shisen-brick';
-          brick.textContent = '🧱';
           brick.setAttribute('aria-hidden', 'true');
           this.cells[r][c].appendChild(brick);
         }
