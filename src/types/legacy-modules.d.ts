@@ -19,6 +19,7 @@ declare module '../../js/board.js' {
     name: string;
     rows: number;
     cols: number;
+    kinds?: number;
   }
 
   export const DIFFICULTIES: Record<'easy' | 'normal' | 'hard', DifficultyConfig>;
@@ -29,7 +30,7 @@ declare module '../../js/board.js' {
     kinds: number;
     history: Array<{a: Coord; b: Coord; value: number}>;
     grid: number[][];
-    constructor(rows: number, cols: number, rng?: () => number);
+    constructor(rows: number, cols: number, rng?: () => number, kinds?: number);
     generate(): void;
     get(r: number, c: number): number;
     remaining(): number;

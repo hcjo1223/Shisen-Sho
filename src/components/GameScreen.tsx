@@ -49,6 +49,7 @@ import {
   DIFFICULTY_META,
   DIFFICULTY_ORDER,
   MAX_HINTS,
+  maxHintsFor,
   MAX_SHUFFLES,
   Sound,
   THEMES,
@@ -287,7 +288,7 @@ export function GameScreen({
       setMode(nextMode);
       setGravityOn(gravity);
       selectedRef.current = null;
-      hintsLeftRef.current = saved ? saved.hintsLeft : MAX_HINTS;
+      hintsLeftRef.current = saved ? saved.hintsLeft : maxHintsFor(diff);
       shufflesLeftRef.current = saved ? saved.shufflesLeft : MAX_SHUFFLES;
       elapsedRef.current = saved ? saved.elapsedMs : 0;
       comboRef.current = 0;
@@ -324,7 +325,7 @@ export function GameScreen({
       const cols = portrait ? diff.rows : diff.cols;
 
       clearSavedGame();
-      resetRoundState(createBoard(rows, cols), activeDiff, 'classic', '', gravity);
+      resetRoundState(createBoard(rows, cols, undefined, diff.kinds), activeDiff, 'classic', '', gravity);
     },
     [resetRoundState],
   );
@@ -428,7 +429,7 @@ export function GameScreen({
       const finalElapsed = elapsedRef.current;
       const finishedMode = modeRef.current;
       const dailyKey = dailyKeyRef.current;
-      const hintsUsed = MAX_HINTS - hintsLeftRef.current;
+      const hintsUsed = Math.max(0, maxHintsFor(activeDiff) - hintsLeftRef.current);
       const curStats = statsRef.current;
       const baseNext: GameStats = {
         ...curStats,
@@ -613,7 +614,7 @@ export function GameScreen({
       return;
     }
     if (hintsLeftRef.current <= 0) {
-      showToast('힌트를 모두 사용했어요! (최대 5회) 💡');
+      showToast(`힌트를 모두 사용했어요! (최대 ${maxHintsFor(activeDiffRef.current)}회) 💡`);
       return;
     }
     const [pair] = board.availablePairs(1);

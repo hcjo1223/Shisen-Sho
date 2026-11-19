@@ -9,7 +9,9 @@
   const DIFFICULTIES = {
     easy:   { name: '쉬움',  rows: 6, cols: 8 },   // 48개 (비율 3:4)
     normal: { name: '보통',  rows: 8, cols: 10 },  // 80개 (비율 4:5)
-    hard:   { name: '어려움', rows: 10, cols: 12 }, // 120개 (모바일 세로 10열×12행 / PC 10행×12열)
+    // 어려움: 판 크기는 보통과 같지만 36종(32종×2장 + 4종×4장)을 섞는다.
+    // 대부분의 타일이 짝이 딱 하나뿐이라 찾기 어렵고 순서를 잘못 고르면 쉽게 막힌다.
+    hard:   { name: '어려움', rows: 8, cols: 10, kinds: 36 }, // 80개
   };
   const COPIES = 4; // 이모지 한 종류당 4장
 
@@ -27,13 +29,20 @@
      * @param {number} rows 내부 행 수
      * @param {number} cols 내부 열 수
      * @param {() => number} [rng]
+     * @param {number} [kinds] 타일 종류 수. 생략하면 종류당 4장.
+     *   (타일 수/4)보다 크면 일부 종류를 2장만 넣는다: 4장 종류 = (타일 수 - 2*kinds)/2
      */
-    constructor(rows, cols, rng) {
-      if ((rows * cols) % COPIES !== 0) throw new Error('타일 수는 4의 배수여야 합니다');
+    constructor(rows, cols, rng, kinds) {
+      const total = rows * cols;
+      if (total % COPIES !== 0) throw new Error('타일 수는 4의 배수여야 합니다');
+      const k = kinds || total / COPIES;
+      if (k < total / COPIES || k > total / 2) throw new Error('타일 종류 수가 올바르지 않습니다');
       this.rows = rows;
       this.cols = cols;
       this.rng = rng || Math.random;
-      this.kinds = (rows * cols) / COPIES;
+      this.kinds = k;
+      // 앞쪽 종류부터 4장, 나머지는 2장 (어느 종류가 4장인지는 셔플로 감춰진다)
+      this.quadKinds = (total - 2 * k) / 2;
       this.history = [];
       this.grid = [];
       this.generate();
@@ -43,7 +52,8 @@
     generate() {
       const tiles = [];
       for (let k = 1; k <= this.kinds; k++) {
-        for (let n = 0; n < COPIES; n++) tiles.push(k);
+        const copies = k <= this.quadKinds ? COPIES : 2;
+        for (let n = 0; n < copies; n++) tiles.push(k);
       }
       for (let attempt = 0; attempt < 200; attempt++) {
         shuffleArray(tiles, this.rng);
