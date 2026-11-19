@@ -28,8 +28,9 @@ export function createBoard(
   rows: number,
   cols: number,
   rng?: () => number,
+  kinds?: number,
 ): BoardInstance {
-  return new BoardClass(rows, cols, rng);
+  return new BoardClass(rows, cols, rng, kinds);
 }
 
 export const DIFFICULTIES = RawDIFFICULTIES as Record<
@@ -134,6 +135,12 @@ export type GameEntry = 'new' | 'resume' | 'daily';
 export type GameMode = 'classic' | 'daily';
 
 export const MAX_HINTS = 5;
+/** 어려움은 힌트를 3회만 준다 */
+export const HARD_MAX_HINTS = 3;
+
+export function maxHintsFor(diff: DifficultyKey): number {
+  return diff === 'hard' ? HARD_MAX_HINTS : MAX_HINTS;
+}
 export const MAX_SHUFFLES = 1;
 export const COMBO_WINDOW = 3000;
 
@@ -174,9 +181,9 @@ export const DIFFICULTY_META: Record<
     key: 'hard',
     icon: '👑',
     name: '어려움',
-    desc: '120개 타일 (10×12 · 꽉 찬 집중)',
-    tiles: 120,
-    gridLabel: '10×12',
+    desc: '80개 타일 (8×10 · 36종 · 힌트 3회)',
+    tiles: 80,
+    gridLabel: '8×10',
   },
 };
 
@@ -449,7 +456,8 @@ function isValidSavedGame(raw: unknown): raw is SavedGame {
   const {rows, cols, grid} = s;
   if (!Number.isInteger(rows) || !Number.isInteger(cols)) return false;
   if (!Array.isArray(grid) || grid.length !== (rows as number) + 2) return false;
-  const kinds = ((rows as number) * (cols as number)) / 4;
+  // 어려움은 일부 종류가 2장뿐이라 종류 수가 (타일 수/2)까지 늘어날 수 있다
+  const kinds = ((rows as number) * (cols as number)) / 2;
   let remaining = 0;
   for (const row of grid) {
     if (!Array.isArray(row) || row.length !== (cols as number) + 2) return false;

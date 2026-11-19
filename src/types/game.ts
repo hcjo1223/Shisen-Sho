@@ -18,6 +18,7 @@ export interface DifficultyConfig {
   name: string;
   rows: number;
   cols: number;
+  kinds?: number;
 }
 
 export interface BoardInstance {
@@ -40,7 +41,7 @@ export interface BoardInstance {
 }
 
 export interface BoardConstructor {
-  new (rows: number, cols: number, rng?: () => number): BoardInstance;
+  new (rows: number, cols: number, rng?: () => number, kinds?: number): BoardInstance;
 }
 
 export interface TileThemeConfig {
