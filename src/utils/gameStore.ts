@@ -9,10 +9,12 @@ import {
 import RawSound from '../../js/sound.js';
 import type {ThemeSlug} from '../astryx-themes';
 import pokemonSpriteUrl from '../assets/pokemon-gen1-sheet.png';
+import digimonSpriteUrl from '../assets/digimon-sheet.png';
 import pokemonThumbUrl from '../assets/pokemon-pikachu-icon.png';
 import fruitDioramaUrl from '../assets/theme-fruit.png';
 import animalDioramaUrl from '../assets/theme-animal.png';
 import pokemonDioramaUrl from '../assets/theme-pokemon.png';
+import digimonDioramaUrl from '../assets/theme-digimon.png';
 import {todayKey} from './daily';
 import type {
   BoardConstructor,
@@ -57,12 +59,13 @@ export const TINTS = RawTINTS as string[];
 export const Sound = RawSound as unknown as SoundEngine;
 
 export type DifficultyKey = 'easy' | 'normal' | 'hard';
-export type TileThemeKey = 'fruit' | 'animal' | 'pokemon';
+export type TileThemeKey = 'fruit' | 'animal' | 'pokemon' | 'digimon';
 export type ColorModeKey = 'system' | 'light' | 'dark';
 export type ScreenName = 'home' | 'dashboard' | 'game';
 
 export const TILE_SPRITE_URLS: Partial<Record<TileThemeKey, string>> = {
   pokemon: pokemonSpriteUrl,
+  digimon: digimonSpriteUrl,
 };
 
 export const POKEMON_THUMB_URL = pokemonThumbUrl;
@@ -71,6 +74,7 @@ export const THEME_DIORAMA_URLS: Record<TileThemeKey, string> = {
   fruit: fruitDioramaUrl,
   animal: animalDioramaUrl,
   pokemon: pokemonDioramaUrl,
+  digimon: digimonDioramaUrl,
 };
 
 /** 선택한 타일 테마에 맞춰 자동으로 적용되는 Astryx UI 디자인 테마 */
@@ -78,6 +82,7 @@ export const THEME_UI_MAP: Record<TileThemeKey, ThemeSlug> = {
   fruit: 'malang',
   animal: 'meadow',
   pokemon: 'kanto',
+  digimon: 'digital',
 };
 
 export type TokenColor =
@@ -86,6 +91,7 @@ export type TokenColor =
   | 'yellow'
   | 'green'
   | 'teal'
+  | 'cyan'
   | 'blue'
   | 'purple'
   | 'pink';
@@ -97,7 +103,7 @@ export const THEME_META: Record<
     tagline: string;
     uiLabel: string;
     badge: string;
-    badgeColor: 'pink' | 'green' | 'yellow';
+    badgeColor: 'pink' | 'green' | 'yellow' | 'cyan';
     heroTokens: ReadonlyArray<{label: string; color: TokenColor}>;
   }
 > = {
@@ -141,6 +147,20 @@ export const THEME_META: Record<
       {label: '💧', color: 'blue'},
       {label: '🍃', color: 'green'},
       {label: '✨', color: 'purple'},
+    ],
+  },
+  digimon: {
+    subtitle: '3D 클레이 36종 · 디지털 디지바이스 UI',
+    tagline: '입체 클레이 피규어 디지몬 어드벤처 사천성',
+    uiLabel: '디지털 디지바이스',
+    badge: '3D 클레이',
+    badgeColor: 'cyan',
+    heroTokens: [
+      {label: '🔥', color: 'orange'},
+      {label: '❄️', color: 'blue'},
+      {label: '💠', color: 'cyan'},
+      {label: '🌿', color: 'green'},
+      {label: '✨', color: 'yellow'},
     ],
   },
 };
@@ -214,6 +234,7 @@ export const TILE_THEME_ORDER: readonly TileThemeKey[] = [
   'fruit',
   'animal',
   'pokemon',
+  'digimon',
 ];
 
 export interface BadgeInfo {
@@ -290,7 +311,8 @@ export function loadSettings(): GameSettings {
     const theme: TileThemeKey =
       raw.theme === 'fruit' ||
       raw.theme === 'animal' ||
-      raw.theme === 'pokemon'
+      raw.theme === 'pokemon' ||
+      raw.theme === 'digimon'
         ? raw.theme
         : DEFAULT_SETTINGS.theme;
     const uiTheme = THEME_UI_MAP[theme];

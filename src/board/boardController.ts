@@ -332,6 +332,11 @@ const BOARD_CSS = `
     opacity: 0.78;
   }
 
+  .shisen-stage-root[data-theme="digimon"] .shisen-path-line.glow {
+    stroke: #67e8f9;
+    opacity: 0.78;
+  }
+
   .shisen-path-line.core {
     stroke: var(--color-accent, #f2685a);
     stroke-width: 0.12;

@@ -1,0 +1,53 @@
+{
+  "recipe": "astryx-oklch-v1",
+  "vibrancy": 58,
+  "neutralProfile": "custom",
+  "modeStrategy": "light-and-dark",
+  "stops": [
+    0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90,
+    95, 100
+  ],
+  "families": [
+    {
+      "id": "neutral",
+      "name": "Digital Cyber Ice Slate",
+      "seed": "#57849e",
+      "kind": "neutral",
+      "anchors": [
+        { "mode": "light", "stop": 15, "color": "#10283c", "policy": "exact" },
+        { "mode": "light", "stop": 45, "color": "#456880", "policy": "exact" },
+        { "mode": "light", "stop": 75, "color": "#a8d4ec", "policy": "exact" },
+        { "mode": "light", "stop": 85, "color": "#c6e7f8", "policy": "exact" },
+        { "mode": "light", "stop": 90, "color": "#ddf2fd", "policy": "exact" },
+        { "mode": "light", "stop": 95, "color": "#eff9ff", "policy": "exact" },
+        { "mode": "dark", "stop": 5, "color": "#08121c", "policy": "exact" },
+        { "mode": "dark", "stop": 10, "color": "#0d1b2a", "policy": "exact" },
+        { "mode": "dark", "stop": 15, "color": "#13263a", "policy": "exact" },
+        { "mode": "dark", "stop": 20, "color": "#1c344d", "policy": "exact" },
+        { "mode": "dark", "stop": 35, "color": "#2f5173", "policy": "exact" },
+        { "mode": "dark", "stop": 70, "color": "#9ec6df", "policy": "exact" },
+        { "mode": "dark", "stop": 90, "color": "#e2f4ff", "policy": "exact" },
+        { "mode": "dark", "stop": 95, "color": "#f2faff", "policy": "exact" }
+      ]
+    },
+    {
+      "id": "accent",
+      "name": "Digivice Cyber Cyan",
+      "seed": "#0082b4",
+      "anchors": [
+        { "mode": "light", "stop": 40, "color": "#0073a3", "policy": "exact" },
+        { "mode": "light", "stop": 90, "color": "#d6f4ff", "policy": "exact" },
+        { "mode": "dark", "stop": 85, "color": "#5ad7ff", "policy": "exact" }
+      ]
+    },
+    { "id": "blue", "name": "Garuru Ice Blue", "seed": "#2b7de9", "anchors": [] },
+    { "id": "cyan", "name": "Digivice Hologram", "seed": "#06b6d4", "anchors": [] },
+    { "id": "green", "name": "Palmon Emerald", "seed": "#22a06b", "anchors": [] },
+    { "id": "orange", "name": "Courage Flame", "seed": "#f97316", "anchors": [] },
+    { "id": "pink", "name": "Biyomon Rose", "seed": "#ec4899", "anchors": [] },
+    { "id": "purple", "name": "Gatomon Violet", "seed": "#8b5cf6", "anchors": [] },
+    { "id": "red", "name": "Tentomon Crimson", "seed": "#e03131", "anchors": [] },
+    { "id": "teal", "name": "Digital Matrix Teal", "seed": "#0d9488", "anchors": [] },
+    { "id": "yellow", "name": "Patamon Gold", "seed": "#eab308", "anchors": [] }
+  ]
+}

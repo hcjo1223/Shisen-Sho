@@ -1,0 +1,364 @@
+/**
+ * 디지털 월드 (Digital World) Astryx Theme
+ *
+ * 시원한 디지털 아이스-슬레이트 뉴트럴과 디지바이스 사이버 시안 액센트,
+ * Jua 디스플레이·제목 서체와 다중 굵기(400~700) Noto Sans KR 본문 서체로 구성한 디지몬 어드벤처 전용 테마.
+ */
+
+import {defineTheme, defineSyntaxTheme} from '@astryxdesign/core/theme';
+import {palette} from './digital.palette';
+
+const {
+  accent,
+  blue,
+  cyan,
+  green,
+  neutral,
+  orange,
+  pink,
+  purple,
+  red,
+  teal,
+  yellow,
+} = palette;
+
+const withAlpha = (color: string, alpha: string): string => `${color}${alpha}`;
+const lightDark = (light: string, dark: string): string =>
+  `light-dark(${light}, ${dark})`;
+
+const digitalSyntax = defineSyntaxTheme({
+  name: 'astryx-digital',
+  tokens: {
+    keyword: [purple.light[30], purple.dark[75]],
+    string: [green.light[30], green.dark[75]],
+    comment: [neutral.light[45], neutral.dark[65]],
+    number: [orange.light[30], orange.dark[80]],
+    function: [blue.light[35], blue.dark[75]],
+    type: [purple.light[30], purple.dark[75]],
+    variable: [neutral.light[15], neutral.dark[85]],
+    operator: [neutral.light[40], neutral.dark[70]],
+    constant: [orange.light[30], orange.dark[80]],
+    tag: [accent.light[40], accent.dark[85]],
+    attribute: [yellow.light[35], yellow.dark[80]],
+    property: [teal.light[30], teal.dark[75]],
+    punctuation: [neutral.light[45], neutral.dark[65]],
+    background: [neutral.light[95], neutral.dark[10]],
+  },
+});
+
+export const digitalTheme = defineTheme({
+  name: 'digital',
+
+  typography: {
+    scale: {base: 14, ratio: 1.2},
+    body: {
+      family: 'Noto Sans KR',
+      fallbacks:
+        '"Apple SD Gothic Neo", "Malgun Gothic", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    },
+    heading: {
+      family: 'Jua',
+      fallbacks:
+        '"Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif',
+      weights: {
+        1: 'normal',
+        2: 'normal',
+        3: 'normal',
+        4: 'normal',
+        5: 'normal',
+        6: 'normal',
+      },
+    },
+    code: {
+      family: 'JetBrains Mono',
+      fallbacks: '"SF Mono", Monaco, Consolas, monospace',
+    },
+  },
+
+  adaptations: {
+    rules: [
+      {
+        when: {pointer: 'coarse', width: {below: 'lg'}},
+        value: {typography: {scale: {base: 16, ratio: 1.185}}},
+      },
+    ],
+  },
+
+  radius: {base: 4, multiplier: 1.5},
+
+  motion: {
+    tempo: 0.95,
+    character: 'expressive',
+    fast: 130,
+    medium: 280,
+    slow: 640,
+    ratio: 0.78,
+  },
+
+  syntax: digitalSyntax,
+
+  tokens: {
+    '--color-accent': [accent.light[40], accent.dark[85]],
+    '--color-accent-muted': [
+      withAlpha(accent.light[40], '24'),
+      withAlpha(accent.dark[85], '2e'),
+    ],
+    '--color-neutral': [
+      withAlpha(neutral.light[15], '0f'),
+      withAlpha(neutral.dark[90], '1a'),
+    ],
+    '--color-background-surface': ['#f8fdff', neutral.dark[15]],
+    '--color-background-body': [neutral.light[95], neutral.dark[10]],
+    '--color-overlay': [
+      withAlpha(neutral.light[15], '66'),
+      withAlpha(neutral.dark[5], 'b3'),
+    ],
+    '--color-overlay-hover': [
+      withAlpha(neutral.light[15], '0c'),
+      withAlpha(neutral.dark[90], '0e'),
+    ],
+    '--color-overlay-pressed': [
+      withAlpha(neutral.light[15], '18'),
+      withAlpha(neutral.dark[90], '1c'),
+    ],
+    '--color-background-muted': [neutral.light[90], neutral.dark[20]],
+
+    '--color-text-primary': [neutral.light[15], neutral.dark[90]],
+    '--color-text-secondary': [neutral.light[45], neutral.dark[70]],
+    '--color-text-disabled': [neutral.light[65], neutral.dark[45]],
+    '--color-text-accent': [accent.light[35], accent.dark[85]],
+    '--color-on-dark': neutral.light[100],
+    '--color-on-light': neutral.light[15],
+    '--color-on-accent': [neutral.light[100], neutral.dark[5]],
+
+    '--color-info': [blue.light[45], blue.dark[75]],
+    '--color-info-muted': 'var(--color-background-blue)',
+    '--color-on-info': [neutral.light[100], blue.dark[10]],
+    '--color-success': [green.light[40], green.dark[70]],
+    '--color-success-muted': [green.light[90], green.dark[20]],
+    '--color-on-success': [neutral.light[100], green.dark[10]],
+    '--color-warning': [yellow.light[55], yellow.dark[80]],
+    '--color-warning-muted': [yellow.light[90], yellow.dark[20]],
+    '--color-on-warning': [neutral.light[15], yellow.dark[10]],
+    '--color-error': [red.light[45], red.dark[75]],
+    '--color-error-muted': [red.light[90], red.dark[20]],
+    '--color-on-error': [neutral.light[100], red.dark[10]],
+
+    '--color-text-info': [blue.light[30], blue.dark[80]],
+    '--color-text-success': [green.light[25], green.dark[80]],
+    '--color-text-warning': [yellow.light[25], yellow.dark[85]],
+    '--color-text-error': [red.light[25], red.dark[85]],
+    '--color-on-info-muted': [blue.light[25], blue.dark[85]],
+    '--color-on-success-muted': [green.light[25], green.dark[85]],
+    '--color-on-warning-muted': [yellow.light[25], yellow.dark[85]],
+    '--color-on-error-muted': [red.light[25], red.dark[85]],
+
+    '--color-icon-accent': [accent.light[40], accent.dark[85]],
+    '--color-icon-primary': [neutral.light[15], neutral.dark[90]],
+    '--color-icon-secondary': [neutral.light[45], neutral.dark[70]],
+    '--color-icon-disabled': [neutral.light[65], neutral.dark[45]],
+
+    '--color-background-card': ['#f8fdff', neutral.dark[15]],
+    '--color-background-popover': ['#f8fdff', neutral.dark[20]],
+    '--color-background-inverted': [neutral.light[15], neutral.dark[95]],
+    '--color-background-error-inverted': [red.light[35], red.dark[65]],
+
+    '--color-border': [neutral.light[85], withAlpha(neutral.dark[90], '22')],
+    '--color-border-emphasized': [neutral.light[75], neutral.dark[35]],
+
+    '--color-skeleton': [neutral.light[85], neutral.dark[30]],
+    '--color-track': [neutral.light[80], neutral.dark[35]],
+    '--color-shadow': [
+      withAlpha('#2e6485', '20'),
+      withAlpha(neutral.dark[0], '55'),
+    ],
+    '--color-tint-hover': [neutral.light[15], neutral.dark[95]],
+
+    '--size-element-sm': '32px',
+    '--size-element-md': '38px',
+    '--size-element-lg': '46px',
+
+    '--color-background-blue': [blue.light[90], blue.dark[90]],
+    '--color-border-blue': [blue.light[80], blue.dark[80]],
+    '--color-icon-blue': [blue.light[25], blue.dark[25]],
+    '--color-text-blue': [blue.light[25], blue.dark[25]],
+
+    '--color-background-cyan': [cyan.light[90], cyan.dark[90]],
+    '--color-border-cyan': [cyan.light[80], cyan.dark[80]],
+    '--color-icon-cyan': [cyan.light[25], cyan.dark[25]],
+    '--color-text-cyan': [cyan.light[25], cyan.dark[25]],
+
+    '--color-background-gray': [neutral.light[90], neutral.dark[85]],
+    '--color-border-gray': [neutral.light[80], neutral.dark[75]],
+    '--color-icon-gray': [neutral.light[25], neutral.dark[25]],
+    '--color-text-gray': [neutral.light[25], neutral.dark[25]],
+
+    '--color-background-green': [green.light[90], green.dark[90]],
+    '--color-border-green': [green.light[80], green.dark[80]],
+    '--color-icon-green': [green.light[25], green.dark[25]],
+    '--color-text-green': [green.light[25], green.dark[25]],
+
+    '--color-background-orange': [orange.light[90], orange.dark[90]],
+    '--color-border-orange': [orange.light[80], orange.dark[80]],
+    '--color-icon-orange': [orange.light[25], orange.dark[25]],
+    '--color-text-orange': [orange.light[25], orange.dark[25]],
+
+    '--color-background-pink': [pink.light[90], pink.dark[90]],
+    '--color-border-pink': [pink.light[80], pink.dark[80]],
+    '--color-icon-pink': [pink.light[25], pink.dark[25]],
+    '--color-text-pink': [pink.light[25], pink.dark[25]],
+
+    '--color-background-purple': [purple.light[90], purple.dark[90]],
+    '--color-border-purple': [purple.light[80], purple.dark[80]],
+    '--color-icon-purple': [purple.light[25], purple.dark[25]],
+    '--color-text-purple': [purple.light[25], purple.dark[25]],
+
+    '--color-background-red': [red.light[90], red.dark[90]],
+    '--color-border-red': [red.light[80], red.dark[80]],
+    '--color-icon-red': [red.light[25], red.dark[25]],
+    '--color-text-red': [red.light[25], red.dark[25]],
+
+    '--color-background-teal': [teal.light[90], teal.dark[90]],
+    '--color-border-teal': [teal.light[80], teal.dark[80]],
+    '--color-icon-teal': [teal.light[25], teal.dark[25]],
+    '--color-text-teal': [teal.light[25], teal.dark[25]],
+
+    '--color-background-yellow': [yellow.light[90], yellow.dark[90]],
+    '--color-border-yellow': [yellow.light[80], yellow.dark[80]],
+    '--color-icon-yellow': [yellow.light[25], yellow.dark[25]],
+    '--color-text-yellow': [yellow.light[25], yellow.dark[25]],
+
+    '--radius-none': '0px',
+    '--radius-inner': '8px',
+    '--radius-element': '14px',
+    '--radius-container': '20px',
+    '--radius-page': '28px',
+    '--radius-chat': '24px',
+    '--radius-full': '9999px',
+
+    '--shadow-low': `0 2px 0 ${lightDark(neutral.light[85], neutral.dark[25])}, 0 4px 12px ${lightDark(withAlpha('#2e6485', '18'), withAlpha(neutral.dark[0], '40'))}`,
+    '--shadow-med': `0 3px 0 ${lightDark(neutral.light[85], neutral.dark[25])}, 0 8px 20px ${lightDark(withAlpha('#2e6485', '20'), withAlpha(neutral.dark[0], '55'))}`,
+    '--shadow-high': `0 5px 0 ${lightDark(neutral.light[85], neutral.dark[25])}, 0 18px 36px ${lightDark(withAlpha('#10283c', '2e'), withAlpha(neutral.dark[0], '66'))}`,
+    '--shadow-inset-hover': `inset 0 0 0 2px ${lightDark(withAlpha(accent.light[40], '30'), withAlpha(accent.dark[85], '38'))}`,
+    '--shadow-inset-selected': `inset 0 0 0 2px ${lightDark(accent.light[40], accent.dark[85])}`,
+    '--shadow-inset-success': `inset 0 0 0 2px ${withAlpha(green.light[40], '40')}`,
+    '--shadow-inset-warning': `inset 0 0 0 2px ${withAlpha(yellow.light[45], '40')}`,
+    '--shadow-inset-error': `inset 0 0 0 2px ${withAlpha(red.light[40], '40')}`,
+  },
+
+  components: {
+    text: {
+      base: {
+        wordBreak: 'keep-all',
+        overflowWrap: 'break-word',
+      },
+    },
+    heading: {
+      base: {
+        fontWeight: 'var(--font-weight-normal)',
+        fontSynthesis: 'none',
+        wordBreak: 'keep-all',
+        overflowWrap: 'break-word',
+      },
+    },
+    button: {
+      base: {
+        borderRadius: '9999px',
+        fontFamily: 'var(--font-family-heading)',
+        fontWeight: 'var(--font-weight-normal)',
+        fontSynthesis: 'none',
+        wordBreak: 'keep-all',
+        overflowWrap: 'break-word',
+      },
+      'variant:primary': {
+        boxShadow: `0 3px 0 ${lightDark(accent.light[25], accent.dark[55])}, 0 6px 14px ${lightDark(withAlpha(accent.light[40], '38'), withAlpha(neutral.dark[0], '45'))}`,
+      },
+      'variant:secondary': {
+        backgroundColor: 'var(--color-background-surface)',
+        borderWidth: '1.5px',
+        borderStyle: 'solid',
+        borderColor: 'var(--color-border-emphasized)',
+        color: 'var(--color-text-primary)',
+        boxShadow: `0 2px 0 ${lightDark(neutral.light[85], neutral.dark[25])}`,
+      },
+    },
+    'switch-field': {
+      base: {
+        wordBreak: 'keep-all',
+        overflowWrap: 'break-word',
+      },
+    },
+    'switch-label': {
+      base: {
+        wordBreak: 'keep-all',
+        overflowWrap: 'break-word',
+      },
+    },
+    item: {
+      base: {
+        wordBreak: 'keep-all',
+        overflowWrap: 'break-word',
+      },
+    },
+    'dialog-header': {
+      base: {
+        wordBreak: 'keep-all',
+        overflowWrap: 'break-word',
+      },
+    },
+    selector: {
+      base: {
+        wordBreak: 'keep-all',
+        overflowWrap: 'break-word',
+      },
+    },
+    'selector-option-row': {
+      base: {
+        wordBreak: 'keep-all',
+        overflowWrap: 'break-word',
+      },
+    },
+    'segmented-control-item': {
+      base: {
+        wordBreak: 'keep-all',
+        overflowWrap: 'break-word',
+      },
+    },
+    card: {
+      base: {
+        borderRadius: 'var(--radius-container)',
+        borderWidth: '1.5px',
+        borderStyle: 'solid',
+        borderColor: 'var(--color-border)',
+      },
+    },
+    'selectable-card': {
+      base: {
+        borderRadius: 'var(--radius-container)',
+        boxShadow: `0 2px 0 ${lightDark(neutral.light[85], neutral.dark[25])}`,
+      },
+      selected: {
+        backgroundColor: lightDark('#edfaff', neutral.dark[20]),
+        boxShadow: `0 3px 0 ${lightDark(accent.light[40], accent.dark[65])}`,
+      },
+    },
+    'clickable-card': {
+      base: {
+        borderRadius: 'var(--radius-container)',
+        boxShadow: `0 2px 0 ${lightDark(neutral.light[85], neutral.dark[25])}`,
+      },
+    },
+    dialog: {
+      base: {
+        borderRadius: '28px',
+      },
+    },
+    toast: {
+      base: {
+        borderRadius: '9999px',
+      },
+    },
+  },
+});
+
+export default digitalTheme;

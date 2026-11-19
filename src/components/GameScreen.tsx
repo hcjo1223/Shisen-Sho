@@ -526,7 +526,9 @@ export function GameScreen({
             streak,
             emojis:
               activeTheme.kind === 'sprite'
-                ? ['⚡', '🔥', '💧', '🌿', '✨', '⭐', '🏆']
+                ? activeThemeKey === 'digimon'
+                  ? ['🔥', '❄️', '💠', '🌿', '⚡', '🕊️', '✨']
+                  : ['⚡', '🔥', '💧', '🌿', '✨', '⭐', '🏆']
                 : activeTheme.tiles.slice(0, 7),
             spriteUrl,
             spriteCols: activeTheme.spriteCols,
