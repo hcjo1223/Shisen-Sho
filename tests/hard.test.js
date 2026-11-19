@@ -24,16 +24,18 @@ function counts(b) {
   return m;
 }
 
-test('어려움은 80개 = 30종 (2장 20종 + 4장 10종)', () => {
-  const m = counts(hardBoard(1));
+test('어려움은 80개 = 28종 (2장 16종 + 4장 12종), 벽돌 없음', () => {
+  const b = hardBoard(1);
+  const m = counts(b);
   const c = [...m.values()];
-  assert.strictEqual(m.size, 30);
-  assert.strictEqual(c.filter(x => x === 2).length, 20);
-  assert.strictEqual(c.filter(x => x === 4).length, 10);
+  assert.strictEqual(m.size, 28);
+  assert.strictEqual(c.filter(x => x === 2).length, 16);
+  assert.strictEqual(c.filter(x => x === 4).length, 12);
+  assert.ok(b.grid.every(row => row.every(v => v >= 0)));
   assert.strictEqual(c.reduce((a, x) => a + x, 0), 80);
 });
 
-test('그림은 1..36 중에서 판마다 다르게 30종을 고른다', () => {
+test('그림은 1..36 중에서 판마다 다르게 28종을 고른다', () => {
   const seen = new Set();
   const sets = new Set();
   for (let s = 1; s <= 40; s++) {
@@ -45,8 +47,13 @@ test('그림은 1..36 중에서 판마다 다르게 30종을 고른다', () => {
   assert.strictEqual(seen.size, 36, '여러 판에 걸쳐 36종이 모두 나와야 한다');
 });
 
-test('바깥 통로 네 모서리에 ㄱ자 벽돌 12개, 안쪽에는 없다', () => {
-  const b = hardBoard(3);
+// 벽돌은 지금 어떤 난이도에도 쓰지 않지만 엔진 옵션으로 남아 있다
+function brickBoard(seed) {
+  return new Board(8, 10, seq(seed), 30, { pool: 36, bricks: true });
+}
+
+test('bricks 옵션: 바깥 통로 네 모서리에 ㄱ자 벽돌 12개, 안쪽에는 없다', () => {
+  const b = brickBoard(3);
   const last = b.rows + 1, right = b.cols + 1;
   const bricks = [];
   b.grid.forEach((row, r) => row.forEach((v, c) => { if (v === BRICK) bricks.push(`${r},${c}`); }));
@@ -71,7 +78,7 @@ test('벽돌은 길을 막는다 (모서리 옆 통로로 돌아가는 경로 �
 });
 
 test('벽돌은 짝으로 잡히지 않고 섞기·중력에도 그대로 남는다', () => {
-  const b = hardBoard(5);
+  const b = brickBoard(5);
   const before = JSON.stringify(b.grid.map(row => row.map(v => v === BRICK)));
   for (const p of b.availablePairs()) assert.ok(b.get(p.a.r, p.a.c) > 0);
   b.shuffle();

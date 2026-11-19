@@ -196,7 +196,7 @@ export const DIFFICULTY_META: Record<
     key: 'hard',
     icon: '👑',
     name: '어려움',
-    desc: '80개 타일 (8×10 · 30종 · 모서리 벽돌 · 힌트 3회)',
+    desc: '80개 타일 (8×10 · 28종 · 힌트 3회)',
     tiles: 80,
     gridLabel: '8×10',
   },
