@@ -51,19 +51,16 @@ const BOARD_CSS = `
     position: relative;
   }
 
-  /* 어려움 모드: 바깥 통로 모서리를 막는 벽돌 (지울 수 없고 길도 못 지나간다) */
+  /* 어려움 모드: 판 꼭짓점 칸을 막는 벽돌 (지울 수 없고 길도 못 지나간다) */
   .shisen-brick {
     position: absolute;
-    inset: 1px;
-    border-radius: calc(var(--shisen-cell) * 0.08);
-    background-color: var(--color-border-emphasized, #c98b6b);
-    background-image:
-      linear-gradient(color-mix(in srgb, var(--color-background-muted, #ffe9e1) 70%, transparent) 0 0),
-      linear-gradient(90deg, color-mix(in srgb, var(--color-background-muted, #ffe9e1) 70%, transparent) 0 0);
-    background-size: 100% 1.5px, 1.5px 50%;
-    background-position: 0 50%, 50% 0;
-    background-repeat: no-repeat;
-    box-shadow: inset 0 -2px 0 color-mix(in srgb, black 18%, transparent);
+    inset: calc(var(--shisen-cell) * 0.035);
+    display: grid;
+    place-items: center;
+    border-radius: calc(var(--shisen-cell) * 0.16);
+    background: color-mix(in srgb, var(--color-border-emphasized, #d8b8ae) 45%, transparent);
+    font-size: calc(var(--shisen-cell) * 0.58);
+    line-height: 1;
     pointer-events: none;
   }
 
@@ -747,6 +744,7 @@ export class BoardController {
         else if (v < 0) {
           const brick = document.createElement('div');
           brick.className = 'shisen-brick';
+          brick.textContent = '🧱';
           brick.setAttribute('aria-hidden', 'true');
           this.cells[r][c].appendChild(brick);
         }

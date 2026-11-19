@@ -24,67 +24,80 @@ function counts(b) {
   return m;
 }
 
-test('어려움은 80개 = 28종 (2장 16종 + 4장 12종), 벽돌 없음', () => {
+test('어려움은 꼭짓점 벽돌 4칸 + 타일 76개 = 24종 (2장 10종 + 4장 14종)', () => {
   const b = hardBoard(1);
   const m = counts(b);
   const c = [...m.values()];
-  assert.strictEqual(m.size, 28);
-  assert.strictEqual(c.filter(x => x === 2).length, 16);
-  assert.strictEqual(c.filter(x => x === 4).length, 12);
-  assert.ok(b.grid.every(row => row.every(v => v >= 0)));
-  assert.strictEqual(c.reduce((a, x) => a + x, 0), 80);
+  assert.strictEqual(m.size, 24);
+  assert.strictEqual(c.filter(x => x === 2).length, 10);
+  assert.strictEqual(c.filter(x => x === 4).length, 14);
+  assert.strictEqual(b.remaining(), 76);
+  const bricks = [];
+  b.grid.forEach((row, r) => row.forEach((v, c) => { if (v === BRICK) bricks.push(`${r},${c}`); }));
+  assert.deepStrictEqual(bricks.sort(), ['1,1', '1,10', '8,1', '8,10'].sort());
 });
 
-test('그림은 1..36 중에서 판마다 다르게 28종을 고른다', () => {
+test('그림은 1..36 중에서 판마다 다르게 24종을 고른다', () => {
   const seen = new Set();
   const sets = new Set();
   for (let s = 1; s <= 40; s++) {
-    const ids = [...counts(hardBoard(Math.imul(s, 2654435761))).keys()].sort((a, b) => a - b);
+    const ids = [...counts(hardBoard(Math.imul(s, 2654435761)))].map(([id]) => id).sort((a, b) => a - b);
     ids.forEach(id => { assert.ok(id >= 1 && id <= 36); seen.add(id); });
     sets.add(ids.join(','));
   }
-  assert.ok(sets.size > 1, '매판 같은 30종이면 안 된다');
+  assert.ok(sets.size > 1, '매판 같은 24종이면 안 된다');
   assert.strictEqual(seen.size, 36, '여러 판에 걸쳐 36종이 모두 나와야 한다');
 });
 
-// 벽돌은 지금 어떤 난이도에도 쓰지 않지만 엔진 옵션으로 남아 있다
-function brickBoard(seed) {
-  return new Board(8, 10, seq(seed), 30, { pool: 36, bricks: true });
-}
-
-test('bricks 옵션: 바깥 통로 네 모서리에 ㄱ자 벽돌 12개, 안쪽에는 없다', () => {
-  const b = brickBoard(3);
-  const last = b.rows + 1, right = b.cols + 1;
-  const bricks = [];
-  b.grid.forEach((row, r) => row.forEach((v, c) => { if (v === BRICK) bricks.push(`${r},${c}`); }));
-  assert.strictEqual(bricks.length, 12);
-  for (const [r, c] of [[0, 0], [1, 0], [0, 1], [0, right], [1, right], [0, right - 1],
-    [last, 0], [last - 1, 0], [last, 1], [last, right], [last - 1, right], [last, right - 1]]) {
-    assert.ok(bricks.includes(`${r},${c}`), `${r},${c} 에 벽돌`);
-  }
-  assert.strictEqual(b.remaining(), 80, '벽돌은 남은 타일 수에 들어가지 않는다');
-});
-
-test('벽돌은 길을 막는다 (모서리 옆 통로로 돌아가는 경로 불가)', () => {
-  // 4x4 판, 왼쪽 열 맨 위·맨 아래 타일이 같은 그림: 사이와 오른쪽이 막혀 왼쪽 통로로만 이어진다
+test('벽돌은 길을 막는다', () => {
+  // 4x4 판, 맨 윗줄 (1,2)와 (1,4): 사이 (1,3)이 비어 있으면 바로 이어지지만, 벽돌이 있으면 막힌다
   const b = new Board(4, 4);
   b.grid = Array.from({ length: 6 }, () => new Array(6).fill(0));
-  b.grid[1][1] = 7; b.grid[4][1] = 7;
-  b.grid[2][1] = 9; b.grid[3][1] = 9;
-  b.grid[1][2] = 8; b.grid[4][2] = 8;
-  assert.ok(PF.findPath(b.grid, { r: 1, c: 1 }, { r: 4, c: 1 }), '벽돌이 없으면 왼쪽 통로로 돌아간다');
-  b.placeBricks();
-  assert.strictEqual(PF.findPath(b.grid, { r: 1, c: 1 }, { r: 4, c: 1 }), null);
+  b.grid[1][2] = 7; b.grid[1][4] = 7;
+  b.grid[2][2] = 9; b.grid[2][4] = 8; b.grid[2][3] = 5; // 아래로 돌아가는 길 차단
+  assert.ok(PF.findPath(b.grid, { r: 1, c: 2 }, { r: 1, c: 4 }));
+  b.grid[1][3] = BRICK; b.grid[0][3] = BRICK; // 위쪽 통로로 돌아가는 길도 차단
+  assert.strictEqual(PF.findPath(b.grid, { r: 1, c: 2 }, { r: 1, c: 4 }), null);
 });
 
-test('벽돌은 짝으로 잡히지 않고 섞기·중력에도 그대로 남는다', () => {
-  const b = brickBoard(5);
-  const before = JSON.stringify(b.grid.map(row => row.map(v => v === BRICK)));
+test('벽돌은 짝으로 잡히지 않고 섞기에도 그대로 남는다', () => {
+  const b = hardBoard(5);
+  const mask = () => JSON.stringify(b.grid.map(row => row.map(v => v === BRICK)));
+  const before = mask();
   for (const p of b.availablePairs()) assert.ok(b.get(p.a.r, p.a.c) > 0);
   b.shuffle();
+  assert.strictEqual(mask(), before);
+  assert.strictEqual(b.remaining(), 76);
+});
+
+test('중력: 벽돌은 고정되고 위 타일은 벽돌 위에 쌓인다', () => {
+  const b = new Board(4, 4);
+  b.grid = Array.from({ length: 6 }, () => new Array(6).fill(0));
+  // 열 1: 위에서부터 3, 0, 0, 벽돌 → 3이 벽돌 바로 위(3행)로 떨어진다
+  b.grid[1][1] = 3; b.grid[4][1] = BRICK;
+  // 열 2: 벽돌(1행) 아래 타일은 바닥으로
+  b.grid[1][2] = BRICK; b.grid[2][2] = 6;
   b.applyGravity();
-  assert.strictEqual(JSON.stringify(b.grid.map(row => row.map(v => v === BRICK))), before);
-  assert.strictEqual(b.remaining(), 80);
+  assert.strictEqual(b.grid[4][1], BRICK);
+  assert.strictEqual(b.grid[3][1], 3);
+  assert.strictEqual(b.grid[1][1], 0);
+  assert.strictEqual(b.grid[1][2], BRICK);
+  assert.strictEqual(b.grid[4][2], 6);
+});
+
+test('어려움 판: 힌트대로 맞추면 (막히면 섞기) 중력 모드에서도 반드시 클리어', () => {
+  for (const gravity of [false, true]) {
+    for (let s = 1; s <= 10; s++) {
+      const b = hardBoard(s * 7919);
+      for (let guard = 0; guard < 500 && !b.isCleared(); guard++) {
+        const p = b.availablePairs(1)[0];
+        if (!p) { b.shuffle(); continue; }
+        b.tryMatch(p.a, p.b);
+        if (gravity) b.applyGravity();
+      }
+      assert.ok(b.isCleared(), `seed ${s} gravity=${gravity}`);
+    }
+  }
 });
 
 test('보통·쉬움은 기존과 같다 (종류당 4장, 벽돌 없음)', () => {

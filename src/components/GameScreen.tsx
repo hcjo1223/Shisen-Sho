@@ -50,6 +50,7 @@ import {
   DIFFICULTY_ORDER,
   MAX_HINTS,
   maxHintsFor,
+  timeLimitFor,
   MAX_SHUFFLES,
   Sound,
   THEMES,
@@ -182,6 +183,10 @@ export function GameScreen({
   const gravityRef = useRef(false);
   /** 설정 시트·확인창이 열려 있는 동안 일시정지 */
   const pausedRef = useRef(false);
+  /** 이번 판의 제한 시간(ms), 0이면 제한 없음 */
+  const timeLimitRef = useRef(0);
+  /** 제한 시간이 다 됐을 때 부를 함수 (타이머 콜백에서 최신 함수를 쓰기 위한 ref) */
+  const timeUpRef = useRef<() => void>(() => {});
 
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
@@ -190,6 +195,9 @@ export function GameScreen({
 
   const [remaining, setRemaining] = useState(0);
   const [elapsedMs, setElapsedMs] = useState(0);
+  const [timeLimitMs, setTimeLimitMs] = useState(0);
+  /** 시간 초과 창: 열려 있으면 그때 남은 타일 수 */
+  const [timeUpTiles, setTimeUpTiles] = useState<number | null>(null);
   const [bestMs, setBestMsState] = useState(() => getBestMs(settings.difficulty));
   const [hintsLeft, setHintsLeft] = useState(MAX_HINTS);
   const [shufflesLeft, setShufflesLeft] = useState(MAX_SHUFFLES);
@@ -221,6 +229,9 @@ export function GameScreen({
       const nextElapsed = Date.now() - startTimeRef.current;
       elapsedRef.current = nextElapsed;
       setElapsedMs(nextElapsed);
+      if (timeLimitRef.current > 0 && nextElapsed >= timeLimitRef.current) {
+        timeUpRef.current();
+      }
     }, 250);
   }, [stopTimer]);
 
@@ -292,6 +303,9 @@ export function GameScreen({
       hintsLeftRef.current = saved ? saved.hintsLeft : maxHintsFor(diff);
       shufflesLeftRef.current = saved ? saved.shufflesLeft : MAX_SHUFFLES;
       elapsedRef.current = saved ? saved.elapsedMs : 0;
+      timeLimitRef.current = nextMode === 'classic' ? timeLimitFor(diff) : 0;
+      setTimeLimitMs(timeLimitRef.current);
+      setTimeUpTiles(null);
       comboRef.current = 0;
       lastMatchRef.current = 0;
       finishedRef.current = false;
@@ -413,6 +427,24 @@ export function GameScreen({
           },
     );
   }, [requestStart]);
+
+  /** 제한 시간 초과: 판을 끝내고 (기록 없이) 시간 초과 창을 띄운다 */
+  const handleTimeUp = useCallback(() => {
+    const board = boardRef.current;
+    if (!board || finishedRef.current) return;
+    finishedRef.current = true;
+    setFinished(true);
+    clearPendingTimers();
+    stopTimer();
+    elapsedRef.current = timeLimitRef.current;
+    setElapsedMs(timeLimitRef.current);
+    deselect();
+    controllerRef.current?.clearHints();
+    clearSavedGame();
+    if (Sound.enabled) Sound.fail();
+    setTimeUpTiles(board.remaining());
+  }, [clearPendingTimers, deselect, stopTimer]);
+  timeUpRef.current = handleTimeUp;
 
   const confirmNewGame = useCallback(() => {
     const start = pendingNewGame;
@@ -862,10 +894,23 @@ export function GameScreen({
 
                       <HStack gap={0.5} align="center">
                         <Text type="supporting" size="xsm">
-                          시간
+                          {timeLimitMs > 0 ? '⏰' : '시간'}
                         </Text>
-                        <Text size="sm" weight="bold" hasTabularNumbers>
-                          {formatTimerClock(elapsedMs)}
+                        <Text
+                          size="sm"
+                          weight="bold"
+                          hasTabularNumbers
+                          color={
+                            timeLimitMs > 0 && timeLimitMs - elapsedMs <= 30_000
+                              ? 'accent'
+                              : undefined
+                          }>
+                          {timeLimitMs > 0
+                            ? formatTimerClock(
+                                // 남은 시간은 올림해서 00:00이 되는 순간 끝나도록
+                                Math.ceil(Math.max(0, timeLimitMs - elapsedMs) / 1000) * 1000,
+                              )
+                            : formatTimerClock(elapsedMs)}
                         </Text>
                       </HStack>
 
@@ -1123,6 +1168,22 @@ export function GameScreen({
           />
         </VStack>
       </BottomSheet>
+
+      <AlertDialog
+        isOpen={timeUpTiles != null}
+        onOpenChange={open => {
+          if (!open) setTimeUpTiles(null);
+        }}
+        title="시간 초과! ⏰"
+        description={`${Math.round(timeLimitMs / 60_000)}분 안에 다 맞추지 못했어요. 남은 타일 ${timeUpTiles ?? 0}개. 다시 도전해 볼까요?`}
+        actionLabel="다시 하기"
+        cancelLabel="닫기"
+        actionVariant="primary"
+        onAction={() => {
+          setTimeUpTiles(null);
+          requestReplay();
+        }}
+      />
 
       <AlertDialog
         isOpen={pendingNewGame != null}

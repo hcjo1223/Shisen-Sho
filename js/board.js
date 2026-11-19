@@ -9,9 +9,10 @@
   const DIFFICULTIES = {
     easy:   { name: '쉬움',  rows: 6, cols: 8 },   // 48개 (비율 3:4)
     normal: { name: '보통',  rows: 8, cols: 10 },  // 80개 (비율 4:5)
-    // 어려움: 판 크기는 보통과 같지만 테마 그림 36종 중 매판 28종을 무작위로 골라
-    // 16종×2장 + 12종×4장으로 깐다 (짝이 하나뿐인 타일이 섞여 있어 더 잘 막힌다)
-    hard:   { name: '어려움', rows: 8, cols: 10, kinds: 28, pool: 36 }, // 80개
+    // 어려움: 판 크기는 보통과 같지만
+    //  - 판 안쪽 네 꼭짓점 칸에 지울 수 없는 벽돌을 놓는다 (타일 76개)
+    //  - 테마 그림 36종 중 매판 24종을 무작위로 골라 10종×2장 + 14종×4장으로 깐다
+    hard:   { name: '어려움', rows: 8, cols: 10, kinds: 24, pool: 36, bricks: true }, // 76개
   };
   const COPIES = 4; // 이모지 한 종류당 4장
   const BRICK = -1; // 길을 막는 벽돌 (타일이 아니라 지울 수 없다)
@@ -34,19 +35,21 @@
      *   (타일 수/4)보다 크면 일부 종류를 2장만 넣는다: 4장 종류 = (타일 수 - 2*kinds)/2
      * @param {{pool?: number, bricks?: boolean}} [opts]
      *   pool: 1..pool 그림 중 kinds 종을 무작위로 고른다 (생략하면 1..kinds)
-     *   bricks: 바깥 통로 네 모서리에 ㄱ자 벽돌을 세운다
+     *   bricks: 판 안쪽 네 꼭짓점 칸을 벽돌로 바꾼다 (그만큼 타일 수가 줄어든다)
      */
     constructor(rows, cols, rng, kinds, opts) {
-      const total = rows * cols;
-      if (total % COPIES !== 0) throw new Error('타일 수는 4의 배수여야 합니다');
-      const k = kinds || total / COPIES;
-      if (k < total / COPIES || k > total / 2) throw new Error('타일 종류 수가 올바르지 않습니다');
       this.rows = rows;
       this.cols = cols;
+      this.bricks = Boolean(opts && opts.bricks);
+      const total = rows * cols - this.brickCells().length;
+      if (total % 2 !== 0) throw new Error('타일 수는 짝수여야 합니다');
+      const k = kinds || total / COPIES;
+      if (!Number.isInteger(k) || k < total / COPIES || k > total / 2) {
+        throw new Error('타일 종류 수가 올바르지 않습니다');
+      }
       this.rng = rng || Math.random;
       this.kinds = k;
       this.pool = Math.max(k, (opts && opts.pool) || k);
-      this.bricks = Boolean(opts && opts.bricks);
       // 앞쪽 종류부터 4장, 나머지는 2장 (어느 종류가 4장인지는 셔플로 감춰진다)
       this.quadKinds = (total - 2 * k) / 2;
       this.history = [];
@@ -68,31 +71,23 @@
       for (let attempt = 0; attempt < 200; attempt++) {
         shuffleArray(tiles, this.rng);
         this.grid = [];
-        for (let r = 0; r < this.rows + 2; r++) {
-          const row = new Array(this.cols + 2).fill(0);
-          if (r > 0 && r <= this.rows) {
-            for (let c = 1; c <= this.cols; c++) {
-              row[c] = tiles[(r - 1) * this.cols + (c - 1)];
-            }
+        for (let r = 0; r < this.rows + 2; r++) this.grid.push(new Array(this.cols + 2).fill(0));
+        for (const [r, c] of this.brickCells()) this.grid[r][c] = BRICK;
+        let t = 0;
+        for (let r = 1; r <= this.rows; r++) {
+          for (let c = 1; c <= this.cols; c++) {
+            if (this.grid[r][c] !== BRICK) this.grid[r][c] = tiles[t++];
           }
-          this.grid.push(row);
         }
-        if (this.bricks) this.placeBricks();
         if (this.hasMoves()) break;
       }
       this.history = [];
     }
 
-    /** 바깥 통로(패딩) 네 모서리에 꼭짓점 + 양옆 한 칸씩, ㄱ자 벽돌을 세운다 */
-    placeBricks() {
-      const last = this.rows + 1;
-      const right = this.cols + 1;
-      const corners = [[0, 0, 1, 1], [0, right, 1, -1], [last, 0, -1, 1], [last, right, -1, -1]];
-      for (const [r, c, dr, dc] of corners) {
-        this.grid[r][c] = BRICK;
-        this.grid[r + dr][c] = BRICK;
-        this.grid[r][c + dc] = BRICK;
-      }
+    /** 벽돌 칸 좌표 (판 안쪽 네 꼭짓점) */
+    brickCells() {
+      if (!this.bricks) return [];
+      return [[1, 1], [1, this.cols], [this.rows, 1], [this.rows, this.cols]];
     }
 
     get(r, c) { return this.grid[r][c]; }
@@ -143,6 +138,7 @@
         for (let r = this.rows; r >= 1; r--) {
           const v = this.grid[r][c];
           if (v === 0) continue;
+          if (v < 0) { write = r - 1; continue; } // 벽돌은 그 자리에 고정, 위 타일은 벽돌 위에 쌓인다
           if (r !== write) {
             this.grid[write][c] = v;
             this.grid[r][c] = 0;

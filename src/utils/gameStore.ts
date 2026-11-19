@@ -156,6 +156,14 @@ export const HARD_MAX_HINTS = 3;
 export function maxHintsFor(diff: DifficultyKey): number {
   return diff === 'hard' ? HARD_MAX_HINTS : MAX_HINTS;
 }
+
+/** 어려움은 5분 안에 모두 맞춰야 한다 (시간이 다 되면 게임 오버) */
+export const HARD_TIME_LIMIT_MS = 5 * 60 * 1000;
+
+/** 난이도별 제한 시간(ms). 제한이 없으면 0 */
+export function timeLimitFor(diff: DifficultyKey): number {
+  return diff === 'hard' ? HARD_TIME_LIMIT_MS : 0;
+}
 export const MAX_SHUFFLES = 1;
 export const COMBO_WINDOW = 3000;
 
@@ -196,8 +204,8 @@ export const DIFFICULTY_META: Record<
     key: 'hard',
     icon: '👑',
     name: '어려움',
-    desc: '80개 타일 (8×10 · 28종 · 힌트 3회)',
-    tiles: 80,
+    desc: '76개 타일 (8×10 · 꼭짓점 벽돌 · 5분 제한)',
+    tiles: 76,
     gridLabel: '8×10',
   },
 };
