@@ -111,6 +111,12 @@ test('4개 테마 트랙과 효과음 세트가 모두 정의되어 있다', () 
   assert.strictEqual(Sound._debug.TRACKS.animal.length, 64);
   assert.strictEqual(Sound._debug.TRACKS.pokemon.length, 128);
   assert.strictEqual(Sound._debug.TRACKS.digimon.length, 128);
+  assert.strictEqual(Sound._debug.POKEMON_MELODY.length, 128);
+  assert.strictEqual(Sound._debug.POKEMON_HARM_BARS.length, 128);
+  assert.strictEqual(Sound._debug.POKEMON_BASS.length, 128);
+  assert.strictEqual(Sound._debug.DIGIMON_MELODY.length, 128);
+  assert.strictEqual(Sound._debug.DIGIMON_COMB_ARP.length, 128);
+  assert.strictEqual(Sound._debug.DIGIMON_BASS.length, 128);
 });
 
 test('알 수 없는 테마를 지정해도 fruit로 안전하게 폴백한다', () => {
@@ -118,7 +124,7 @@ test('알 수 없는 테마를 지정해도 fruit로 안전하게 폴백한다',
   assert.strictEqual(Sound.theme, 'fruit');
 });
 
-test('포켓몬/디지몬 BGM 트랙이 각 스텝마다 유효한 음향 노드를 생성한다', async () => {
+test('포켓몬(8비트 팡파르)·디지몬(오르골) BGM 트랙이 각 스텝마다 유효한 음향 노드를 생성한다', async () => {
   Sound.bgmEnabled = false;
   await Sound.unlock();
 
@@ -141,11 +147,12 @@ test('포켓몬/디지몬 BGM 트랙이 각 스텝마다 유효한 음향 노드
     signatures[theme] = { waves: [...waveSet].sort(), noises: mock.created.noises - startNoise };
   }
 
-  // 테마별 음색 특성 확인
+  // 포켓몬 = 8비트 사각파/삼각파 팡파르 + 행진 노이즈 타악
   assert.ok(signatures.pokemon.waves.includes('square'));
-  assert.ok(signatures.pokemon.noises > 0, '포켓몬 BGM은 레트로 노이즈 타악을 포함해야 함');
-  assert.ok(signatures.digimon.waves.includes('sawtooth'), '디지몬 BGM은 애니 록 sawtooth 신스를 포함해야 함');
-  assert.ok(signatures.digimon.noises > 0, '디지몬 BGM은 록 드럼 타악을 포함해야 함');
+  assert.ok(signatures.pokemon.noises > 0, '포켓몬 BGM은 8비트 행진 노이즈 타악을 포함해야 함');
+  // 디지몬 = 감성 오르골(사인파 + 벨 배음 삼각파, 톱니파·드럼 노이즈 없음)
+  assert.ok(signatures.digimon.waves.includes('sine') && !signatures.digimon.waves.includes('sawtooth'));
+  assert.strictEqual(signatures.digimon.noises, 0, '디지몬 오르골은 노이즈 드럼을 쓰지 않음');
   assert.ok(signatures.animal.waves.includes('sine') && !signatures.animal.waves.includes('sawtooth'));
 });
 

@@ -2,8 +2,8 @@
  * sound.js — 테마별 Web Audio API 효과음 및 BGM 합성기
  * - fruit   : 과일 농장 — 톡톡 피치 마림바 & 도트 칩튠
  * - animal  : 동물 친구들 — 포근한 숲속 오르골 & 칼림바
- * - pokemon : 포켓몬 1세대 — 8비트 휴대용 콘솔 모험 칩튠 OST 느낌
- * - digimon : 디지몬 어드벤처 — 디지바이스 사이버 신스 & 애니 록 OST 느낌
+ * - pokemon : 포켓몬 1세대 — 8비트 옐로우 팡파르 & 행진 칩튠 OST 느낌
+ * - digimon : 디지몬 어드벤처 — 감성 오르골(뮤직박스) 발라드 OST & 디지바이스 SFX
  */
 (function (root) {
   let ctx = null;
@@ -154,7 +154,7 @@
     osc.stop(t0 + dur + 0.05);
   }
 
-  function playNoteOnTarget(a, target, freq, time, dur, type, vol, detune) {
+  function playNoteOnTarget(a, target, freq, time, dur, type, vol, detune, attack) {
     if (!freq || !target) return;
     const osc = a.createOscillator();
     const g = a.createGain();
@@ -162,11 +162,28 @@
     osc.frequency.setValueAtTime(freq, time);
     if (detune) osc.detune.setValueAtTime(detune, time);
     g.gain.setValueAtTime(0.0001, time);
-    g.gain.exponentialRampToValueAtTime(vol || 0.16, time + 0.008);
+    g.gain.exponentialRampToValueAtTime(vol || 0.16, time + (attack || 0.008));
     g.gain.exponentialRampToValueAtTime(0.0001, time + dur * 0.95);
     osc.connect(g).connect(target);
     osc.start(time);
     osc.stop(time + dur + 0.02);
+  }
+
+  /**
+   * 실물 태엽 오르골(뮤직박스) 금속 빗살(Tine) 음색 합성:
+   * - 빠른 타격음(attack 3ms) + 맑은 사인파 기본음 + 2배/3배 금속 배음의 긴 여운
+   */
+  function playMusicBoxTine(a, target, freq, time, ringSec, vol, isMelody) {
+    if (!freq || !target) return;
+    // 기본음 (따뜻하고 영롱한 순수 사인파)
+    playNoteOnTarget(a, target, freq, time, ringSec, 'sine', vol, 0, 0.003);
+    // 오르골 특유의 은은한 옥타브 위 빗살 배음
+    if (isMelody) {
+      playNoteOnTarget(a, target, freq * 2, time, Math.min(0.45, ringSec * 0.45), 'sine', vol * 0.28, 0, 0.002);
+      playNoteOnTarget(a, target, freq * 3, time, 0.14, 'triangle', vol * 0.08, 0, 0.002);
+    } else {
+      playNoteOnTarget(a, target, freq * 2, time, Math.min(0.28, ringSec * 0.35), 'sine', vol * 0.18, 0, 0.003);
+    }
   }
 
   function playNoiseHit(a, target, time, dur, cutoff, filterType, vol) {
@@ -183,20 +200,6 @@
     src.connect(filter).connect(g).connect(target);
     src.start(time);
     src.stop(time + dur + 0.02);
-  }
-
-  function playKick(a, target, time, dur, vol) {
-    if (!target) return;
-    const osc = a.createOscillator();
-    const g = a.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(145, time);
-    osc.frequency.exponentialRampToValueAtTime(46, time + 0.085);
-    g.gain.setValueAtTime(vol || 0.24, time);
-    g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
-    osc.connect(g).connect(target);
-    osc.start(time);
-    osc.stop(time + dur + 0.02);
   }
 
   function vibrate(ms) {
@@ -258,91 +261,105 @@
     8,
   );
 
-  // 3) 포켓몬 1세대 (pokemon) — 8비트 콘솔 모험 OST 느낌 (128스텝, 16분음표 139 BPM)
+  // 3) 포켓몬 1세대 (pokemon) — G 메이저 밝은 8비트 옐로우 팡파르·행진 OST 느낌 (128스텝, 16분음표 136 BPM)
   const POKEMON_MELODY = compileTrack([
-    // Bar 1 (C): 씩씩한 모험의 시작
-    'C5:2', 'E5:2', 'G5:2', 'C6:2', 'G5:3', 'E5', 'G5:2', 'A5:2',
-    // Bar 2 (Bb): 클래식 레트로 bVII 도약
-    'Bb5:2', 'A5:2', 'G5:2', 'F5:2', 'G5:2', 'F5:2', 'D5:4',
-    // Bar 3 (F -> G): 힘찬 상승 라인
-    'F5:2', 'A5:2', 'C6:2', 'A5:2', 'G5:2', 'B5:2', 'D6:4',
-    // Bar 4 (C -> G): 빠른 16비트 턴어라운드
-    'E6:2', 'D6:2', 'C6:2', 'G5:2', 'A5', 'G5', 'F5', 'E5', 'D5:4',
-    // Bar 5 (Am -> Em): 긴장감 있는 브리지
-    'A5:2', 'E5:2', 'A5:2', 'C6:2', 'B5:2', 'A5:2', 'G5:2', 'E5:2',
-    // Bar 6 (F -> G): 결의에 찬 전진
-    'F5:2', 'G5:2', 'A5:2', 'C6:2', 'D6:2', 'C6:2', 'A5:2', 'G5:2',
-    // Bar 7 (Dm -> G7): 클라이맥스 빌드업
-    'F5:2', 'E5:2', 'D5:2', 'F5:2', 'G5:2', 'A5:2', 'B5:2', 'D6:2',
-    // Bar 8 (C): 당당한 승리 팡파르 루프
-    'C6:3', 'G5', 'E5:2', 'G5:2', 'C6:4', '.', '.', 'G5:2',
+    // Bar 1 (G): 쾌활한 타이틀 트럼펫 팡파르 호출
+    'D5:2', 'G5:2', 'B5:2', 'D6:4', 'B5:2', 'G5:2', 'A5:2',
+    // Bar 2 (C -> D): 산뜻한 응답 팡파르
+    'E5:2', 'G5:2', 'C6:4', 'B5:2', 'A5:2', 'D6:4',
+    // Bar 3 (G): 피카츄를 연상시키는 톡톡 튀는 마스코트 스킵
+    'B5:2', 'G5', 'A5', 'B5:2', 'D6:2', 'G6:3', 'E6', 'D6:2', 'B5:2',
+    // Bar 4 (Am -> D7): 경쾌한 턴어라운드
+    'C6:2', 'A5:2', 'F#5:2', 'A5:2', 'G5:3', 'F#5', 'D5:4',
+    // Bar 5 (G -> Em): 햇살 가득 행진 B파트
+    'G5:2', 'A5:2', 'B5:2', 'D6:2', 'E6:2', 'D6:2', 'B5:4',
+    // Bar 6 (C -> G): 신나는 스텝 상승
+    'C6:2', 'E6:2', 'G6:2', 'E6:2', 'D6:2', 'B5:2', 'G5:4',
+    // Bar 7 (Am -> D7): 화려한 피날레 빌드업
+    'A5:2', 'B5:2', 'C6:2', 'E6:2', 'D6:2', 'C6:2', 'B5:2', 'A5:2',
+    // Bar 8 (G): 밝은 옐로우 팡파르 마무리 + 픽업
+    'G5:3', 'D5', 'G5:2', 'B5:2', 'G5:4', '.', '.', 'D5:2',
+  ]);
+  const POKEMON_HARM_BARS = compileTrack([
+    // Bar 1 (16)
+    'B4:2', 'D5:2', 'G5:2', 'B5:4', 'G5:2', 'D5:2', 'F#5:2',
+    // Bar 2 (16)
+    'C5:2', 'E5:2', 'G5:4', 'G5:2', 'F#5:2', 'A5:4',
+    // Bar 3 (16)
+    'G5:2', 'D5:2', 'G5:2', 'B5:2', 'D6:3', 'C6', 'B5:2', 'G5:2',
+    // Bar 4 (16)
+    'A5:2', 'E5:2', 'D5:2', 'F#5:2', 'E5:3', 'D5', 'A4:4',
+    // Bar 5 (16)
+    'G4', 'B4', 'D5', 'B4', 'G4', 'B4', 'D5', 'B4',
+    'E4', 'G4', 'B4', 'G4', 'E4', 'G4', 'B4', 'G4',
+    // Bar 6 (16)
+    'C4', 'E4', 'G4', 'E4', 'C4', 'E4', 'G4', 'E4',
+    'G4', 'B4', 'D5', 'B4', 'G4', 'B4', 'D5', 'B4',
+    // Bar 7 (16)
+    'A4', 'C5', 'E5', 'C5', 'A4', 'C5', 'E5', 'C5',
+    'D4', 'F#4', 'A4', 'F#4', 'D4', 'F#4', 'A4', 'D5',
+    // Bar 8 (16)
+    'G4', 'B4', 'D5', 'B4', 'G4', 'B4', 'D5', 'B4',
+    'G5:4', '.', '.', 'B4:2',
   ]);
   const POKEMON_BASS = compileTrack([
-    'C3:2', 'C4:2', 'G3:2', 'C4:2', 'C3:2', 'G3:2', 'C4:2', 'G3:2',
-    'Bb2:2', 'Bb3:2', 'F3:2', 'Bb3:2', 'Bb2:2', 'F3:2', 'G3:2', 'B3:2',
-    'F3:2', 'F4:2', 'C4:2', 'F4:2', 'G3:2', 'G4:2', 'D4:2', 'G4:2',
-    'C3:2', 'G3:2', 'C4:2', 'E3:2', 'G3:2', 'D3:2', 'G3:2', 'B3:2',
-    'A2:2', 'A3:2', 'E3:2', 'A3:2', 'E3:2', 'E4:2', 'B3:2', 'E4:2',
-    'F3:2', 'F4:2', 'C4:2', 'F4:2', 'G3:2', 'G4:2', 'D4:2', 'G4:2',
-    'D3:2', 'D4:2', 'A3:2', 'D4:2', 'G3:2', 'G4:2', 'D4:2', 'B3:2',
-    'C3:2', 'C4:2', 'G3:2', 'E3:2', 'C3:4', 'G3:2', 'G2:2',
+    'G2:2', 'G3:2', 'D3:2', 'G3:2', 'G2:2', 'D3:2', 'G3:2', 'D3:2',
+    'C3:2', 'C4:2', 'G3:2', 'C4:2', 'D3:2', 'A3:2', 'D4:2', 'A3:2',
+    'G2:2', 'G3:2', 'D3:2', 'G3:2', 'B2:2', 'B3:2', 'G3:2', 'D3:2',
+    'A2:2', 'A3:2', 'D3:2', 'D4:2', 'G2:2', 'D3:2', 'G3:2', 'D3:2',
+    'G2:2', 'G3:2', 'D3:2', 'G3:2', 'E2:2', 'E3:2', 'B2:2', 'E3:2',
+    'C3:2', 'C4:2', 'G3:2', 'C4:2', 'G2:2', 'G3:2', 'D3:2', 'G3:2',
+    'A2:2', 'A3:2', 'E3:2', 'A3:2', 'D3:2', 'D4:2', 'A3:2', 'D4:2',
+    'G2:2', 'D3:2', 'G3:2', 'D3:2', 'G2:4', 'D3:2', 'D2:2',
   ]);
-  const POKEMON_ARP = compileArp(
-    [
-      ['C4', 'E4', 'G4'],
-      ['Bb3', 'D4', 'F4'],
-      ['F3', 'A3', 'C4'],
-      ['C4', 'E4', 'G4'],
-      ['A3', 'C4', 'E4'],
-      ['F3', 'A3', 'C4'],
-      ['D4', 'F4', 'A4'],
-      ['C4', 'E4', 'G4'],
-    ],
-    16,
-  );
 
-  // 4) 디지몬 어드벤처 (digimon) — 디지바이스 사이버 신스 + 애니 록 OST 느낌 (128스텝, 16분음표 144 BPM)
+  // 4) 디지몬 어드벤처 (digimon) — 감성 오르골(뮤직박스) 발라드 버전 (128스텝, Em→C→D→G 서정적 진행)
   const DIGIMON_MELODY = compileTrack([
-    // Bar 1 (Am): 에너지 넘치는 질주 오프닝
-    'E5:2', 'E5:2', 'A5:2', 'B5:2', 'C6:3', 'B5', 'A5:2', 'E5:2',
-    // Bar 2 (F): 벅차오르는 도약
-    'F5:2', 'F5:2', 'A5:2', 'C6:2', 'B5:2', 'A5:2', 'G5:4',
-    // Bar 3 (G): 시원하게 뻗는 멜로디
-    'G5:2', 'G5:2', 'B5:2', 'D6:2', 'C6:3', 'B5', 'A5:2', 'G5:2',
-    // Bar 4 (Em -> Am): 디지바이스 싱코페이션
-    'E5:2', 'G5:2', 'B5:2', 'G5:2', 'A5:4', 'E5:4',
-    // Bar 5 (Dm): 진화 직전의 긴박한 빌드
-    'D6:3', 'C6', 'B5:2', 'A5:2', 'D6:2', 'C6:2', 'A5:2', 'F5:2',
-    // Bar 6 (F -> G): 서스펜스 상승
-    'C6:2', 'B5:2', 'A5:2', 'B5:2', 'D6:4', 'D6:3', '.',
-    // Bar 7 (Am -> G): 후렴 하이라이트
-    'E6:3', 'D6', 'C6:2', 'A5:2', 'D6:3', 'C6', 'B5:2', 'G5:2',
-    // Bar 8 (E7): 드라마틱 턴어라운드
-    'A5:2', 'G#5:2', 'B5:2', 'D6:2', 'E6:5', '.', 'C6', 'D6',
+    // 1~4마디: 서정적인 오르골 메인 주제 (각 8스텝)
+    'B4', 'E5', 'G5:2', 'F#5:2', 'E5:2',
+    'D5', 'E5', 'G5:2', 'F#5:4',
+    'B4', 'D5', 'G5:2', 'A5:2', 'B5:2',
+    'A5:2', 'G5:2', 'F#5:4',
+    // 5~8마디: 따뜻한 화답과 숨고르기
+    'B4', 'E5', 'G5:2', 'F#5:2', 'E5:2',
+    'D5', 'E5', 'A5:2', 'G5:4',
+    'A5', 'B5', 'C6:2', 'B5:2', 'A5:2',
+    'G5:2', 'F#5:2', 'E5:4',
+    // 9~12마디: 벅차오르는 후렴 오르골 고음부
+    'E6:3', 'D6', 'C6:2', 'B5:2',
+    'D6:3', 'C6', 'B5:2', 'G5:2',
+    'C6:2', 'B5', 'A5', 'B5:2', 'G5:2',
+    'A5:3', 'B5', 'A5:4',
+    // 13~16마디: 여운 깊은 클라이맥스 & 잔잔한 마무리
+    'E6:3', 'D6', 'C6:2', 'B5:2',
+    'D6:3', 'E6', 'B5:4',
+    'C6:2', 'B5', 'A5', 'G5:2', 'F#5:2',
+    'E5:6', '.', '.',
+  ]);
+  const DIGIMON_COMB_ARP = compileTrack([
+    'E3', 'B3', 'E4', 'G4', 'B4', 'G4', 'E4', 'B3',
+    'C3', 'G3', 'C4', 'E4', 'D3', 'A3', 'D4', 'F#4',
+    'G3', 'D4', 'G4', 'B4', 'F#3', 'D4', 'F#4', 'A4',
+    'E3', 'B3', 'E4', 'G4', 'B3', 'F#4', 'B4', 'D#4',
+    'E3', 'B3', 'E4', 'G4', 'B4', 'G4', 'E4', 'B3',
+    'C3', 'G3', 'C4', 'E4', 'G3', 'D4', 'G4', 'B4',
+    'A3', 'E4', 'A4', 'C5', 'D3', 'A3', 'D4', 'F#4',
+    'E3', 'B3', 'E4', 'G4', 'B4', 'E4', 'B3', 'E4',
+    'C3', 'G3', 'C4', 'E4', 'G4', 'E4', 'C4', 'G3',
+    'D3', 'A3', 'D4', 'F#4', 'G3', 'D4', 'G4', 'B4',
+    'A3', 'E4', 'A4', 'C5', 'B3', 'F#4', 'B4', 'D5',
+    'A3', 'E4', 'C5', 'E4', 'D3', 'A3', 'D4', 'F#4',
+    'C3', 'G3', 'C4', 'E4', 'G4', 'E4', 'C4', 'G3',
+    'D3', 'A3', 'D4', 'F#4', 'E3', 'B3', 'E4', 'G4',
+    'C3', 'G3', 'E4', 'C4', 'D3', 'A3', 'F#4', 'D4',
+    'E3', 'B3', 'E4', 'G4', 'B4', 'G4', 'E4', 'B3',
   ]);
   const DIGIMON_BASS = compileTrack([
-    'A2:2', 'A3:2', 'A2:2', 'A3:2', 'A2:2', 'A3:2', 'E2:2', 'A3:2',
-    'F2:2', 'F3:2', 'F2:2', 'F3:2', 'F2:2', 'F3:2', 'C3:2', 'F3:2',
-    'G2:2', 'G3:2', 'G2:2', 'G3:2', 'G2:2', 'G3:2', 'D3:2', 'G3:2',
-    'E2:2', 'E3:2', 'E2:2', 'E3:2', 'A2:2', 'A3:2', 'E2:2', 'G2:2',
-    'D3:2', 'D4:2', 'D3:2', 'D4:2', 'D3:2', 'D4:2', 'A2:2', 'D3:2',
-    'F2:2', 'F3:2', 'F2:2', 'F3:2', 'G2:2', 'G3:2', 'G2:2', 'D3:2',
-    'A2:2', 'A3:2', 'E3:2', 'A3:2', 'G2:2', 'G3:2', 'D3:2', 'G3:2',
-    'F2:2', 'E2:2', 'G#2:2', 'B2:2', 'E3:2', 'B2:2', 'E2:4',
+    'E2:4', 'E3:4', 'C3:4', 'D3:4', 'G2:4', 'F#2:4', 'E2:4', 'B2:4',
+    'E2:4', 'E3:4', 'C3:4', 'G2:4', 'A2:4', 'D3:4', 'E2:4', 'E3:4',
+    'C3:4', 'G3:4', 'D3:4', 'G2:4', 'A2:4', 'B2:4', 'A2:4', 'D3:4',
+    'C3:4', 'G3:4', 'D3:4', 'E3:4', 'C3:4', 'D3:4', 'E2:8',
   ]);
-  const DIGIMON_ARP = compileArp(
-    [
-      ['A5', 'E6', 'A5', 'C6'],
-      ['F5', 'C6', 'F5', 'A5'],
-      ['G5', 'D6', 'G5', 'B5'],
-      ['E5', 'B5', 'A5', 'E6'],
-      ['D5', 'A5', 'D6', 'F5'],
-      ['F5', 'C6', 'G5', 'D6'],
-      ['A5', 'E6', 'G5', 'D6'],
-      ['E5', 'G#5', 'B5', 'E6'],
-    ],
-    16,
-  );
 
   // 각 테마 BGM 스케줄러 정의
   const TRACKS = {
@@ -370,7 +387,6 @@
         const s = step % ANIMAL_MELODY.length;
         const m = ANIMAL_MELODY[s];
         if (m) {
-          // 오르골/칼림바: 따뜻한 삼각파 + 옥타브 위 맑은 사인 배음
           playNoteOnTarget(a, target, m.freq, time, this.stepSec * m.dur * 1.15, 'triangle', 0.25);
           playNoteOnTarget(a, target, m.freq * 2, time, this.stepSec * 0.65, 'sine', 0.04);
         }
@@ -386,69 +402,58 @@
     },
     pokemon: {
       length: POKEMON_MELODY.length,
-      stepSec: 60 / 139 / 4,
-      cutoff: 4800,
+      stepSec: 60 / 136 / 4,
+      cutoff: 4900,
       playStep(a, target, step, time) {
         const s = step % POKEMON_MELODY.length;
         const m = POKEMON_MELODY[s];
         if (m) {
-          // 레트로 휴대용 콘솔 리드 사각파
-          playNoteOnTarget(a, target, m.freq, time, this.stepSec * m.dur * 0.88, 'square', 0.155);
+          // 8비트 트럼펫 팡파르 리드 사각파
+          playNoteOnTarget(a, target, m.freq, time, this.stepSec * m.dur * 0.86, 'square', 0.155);
         }
-        const arp = POKEMON_ARP[s];
-        if (arp) {
-          // 특징적인 16비트 빠른 코드 아르페지오 채널
-          playNoteOnTarget(a, target, arp.freq, time, this.stepSec * 0.65, 'square', 0.05);
+        const h = POKEMON_HARM_BARS[s];
+        if (h) {
+          // 화음/아르페지오 2nd 펄스 채널
+          playNoteOnTarget(a, target, h.freq, time, this.stepSec * h.dur * 0.72, 'square', 0.055);
         }
         const b = POKEMON_BASS[s];
         if (b) {
-          // 파형 채널 옥타브 어드벤처 베이스
-          playNoteOnTarget(a, target, b.freq, time, this.stepSec * b.dur * 0.86, 'triangle', 0.26);
+          // 탄력 있는 게임보이 웨이브 행진 베이스
+          playNoteOnTarget(a, target, b.freq, time, this.stepSec * b.dur * 0.85, 'triangle', 0.26);
         }
-        // 레트로 노이즈 채널 리듬
+        // 행진곡 스네어 노이즈 리듬 (턴어라운드 마디엔 작은 드럼 롤)
         const barStep = s % 16;
+        const barIdx = Math.floor(s / 16);
         if (barStep === 4 || barStep === 12) {
-          playNoiseHit(a, target, time, 0.07, 1900, 'bandpass', 0.055);
+          playNoiseHit(a, target, time, 0.065, 2000, 'bandpass', 0.055);
+        } else if ((barIdx === 3 || barIdx === 7) && (barStep === 14 || barStep === 15)) {
+          playNoiseHit(a, target, time, 0.045, 2400, 'bandpass', 0.045);
         } else if (barStep % 4 === 2) {
-          playNoiseHit(a, target, time, 0.032, 6800, 'highpass', 0.03);
+          playNoiseHit(a, target, time, 0.028, 7000, 'highpass', 0.028);
         }
       },
     },
     digimon: {
       length: DIGIMON_MELODY.length,
-      stepSec: 60 / 144 / 4,
-      cutoff: 3900,
+      stepSec: 0.24,
+      cutoff: 5400,
       playStep(a, target, step, time) {
         const s = step % DIGIMON_MELODY.length;
         const m = DIGIMON_MELODY[s];
         if (m) {
-          // 디튠 듀얼 톱니파 애니 록 리드 신스
-          const d = this.stepSec * m.dur * 0.9;
-          playNoteOnTarget(a, target, m.freq, time, d, 'sawtooth', 0.088, -6);
-          playNoteOnTarget(a, target, m.freq, time, d, 'sawtooth', 0.088, 6);
+          // 메인 오르골 빗살: 여운이 길게 남는 맑은 벨 톤
+          const ring = Math.max(0.68, this.stepSec * m.dur * 1.15);
+          playMusicBoxTine(a, target, m.freq, time, ring, 0.23, true);
         }
-        const arp = DIGIMON_ARP[s];
-        if (arp && s % 2 === 0) {
-          // 반짝이는 디지바이스 크리스탈 신스 아르페지오
-          playNoteOnTarget(a, target, arp.freq, time, this.stepSec * 1.1, 'sine', 0.068);
-          playNoteOnTarget(a, target, arp.freq, time, this.stepSec * 0.7, 'triangle', 0.03);
+        const arp = DIGIMON_COMB_ARP[s];
+        if (arp) {
+          // 잔잔히 흐르는 오르골 태엽 반주 아르페지오
+          playMusicBoxTine(a, target, arp.freq, time, 0.56, 0.075, false);
         }
         const b = DIGIMON_BASS[s];
         if (b) {
-          // 질주감 있는 신스 록 베이스
-          const bd = this.stepSec * b.dur * 0.88;
-          playNoteOnTarget(a, target, b.freq, time, bd, 'triangle', 0.25);
-          playNoteOnTarget(a, target, b.freq, time, bd * 0.75, 'sawtooth', 0.055);
-        }
-        // 일렉트로닉 애니 록 드럼
-        const barStep = s % 16;
-        if (barStep === 0 || barStep === 6 || barStep === 8 || barStep === 10) {
-          playKick(a, target, time, 0.095, 0.22);
-        }
-        if (barStep === 4 || barStep === 12) {
-          playNoiseHit(a, target, time, 0.085, 2200, 'bandpass', 0.065);
-        } else if (barStep % 2 === 1) {
-          playNoiseHit(a, target, time, 0.028, 7500, 'highpass', 0.024);
+          // 저음부 오르골 나무 공명음
+          playNoteOnTarget(a, target, b.freq, time, 0.9, 'sine', 0.14, 0, 0.008);
         }
       },
     },
@@ -537,7 +542,7 @@
   const FRUIT_SCALE = ['C5', 'D5', 'E5', 'G5', 'A5', 'C6', 'E6', 'G6'].map(noteHz);
   const ANIMAL_SCALE = ['F5', 'G5', 'A5', 'C6', 'D6', 'F6', 'A6'].map(noteHz);
   const POKEMON_SCALE = ['G5', 'A5', 'B5', 'D6', 'E6', 'G6', 'B6'].map(noteHz);
-  const DIGIMON_SCALE = ['A5', 'B5', 'C#6', 'E6', 'F#6', 'A6', 'B6'].map(noteHz);
+  const DIGIMON_SCALE = ['E5', 'F#5', 'G5', 'B5', 'D6', 'E6', 'G6'].map(noteHz);
 
   const SFX = {
     fruit: {
@@ -569,7 +574,6 @@
     },
     animal: {
       select() {
-        // 포근한 칼림바·우드블록 톡!
         tone(noteHz('F5'), 0, 0.11, { type: 'triangle', vol: 0.14 });
         tone(noteHz('C6'), 0, 0.06, { type: 'sine', vol: 0.06 });
       },
@@ -589,7 +593,6 @@
         });
       },
       hint() {
-        // 숲속 작은 새 지저귐 2음 차임
         tone(noteHz('G6'), 0, 0.11, { type: 'sine', vol: 0.11, endFreq: noteHz('A6') });
         tone(noteHz('Bb6'), 0.1, 0.18, { type: 'sine', vol: 0.11, endFreq: noteHz('C7') });
       },
@@ -602,44 +605,42 @@
     },
     pokemon: {
       select() {
-        // 8비트 콘솔 RPG 메뉴 커서 삐빅!
-        tone(noteHz('B5'), 0, 0.032, { type: 'square', vol: 0.1 });
-        tone(noteHz('E6'), 0.028, 0.055, { type: 'square', vol: 0.11 });
+        // 밝은 8비트 옐로우 마스코트 커서 삐빅!
+        tone(noteHz('D6'), 0, 0.032, { type: 'square', vol: 0.1 });
+        tone(noteHz('G6'), 0.028, 0.055, { type: 'square', vol: 0.11 });
       },
       match(combo) {
-        // 아이템 획득 / 경험치 업 8비트 스파클 아르페지오
+        // 경쾌한 8비트 전격 스파클 G 메이저 아르페지오
         const base = Math.min(Math.max(0, (combo || 1) - 1), POKEMON_SCALE.length - 4);
-        tone(POKEMON_SCALE[base], 0, 0.065, { type: 'square', vol: 0.12 });
-        tone(POKEMON_SCALE[base + 1], 0.05, 0.065, { type: 'square', vol: 0.12 });
-        tone(POKEMON_SCALE[base + 2], 0.1, 0.075, { type: 'square', vol: 0.13 });
-        tone(POKEMON_SCALE[base + 3], 0.15, 0.26, { type: 'triangle', vol: 0.18 });
+        tone(POKEMON_SCALE[base], 0, 0.06, { type: 'square', vol: 0.12 });
+        tone(POKEMON_SCALE[base + 1], 0.048, 0.06, { type: 'square', vol: 0.12 });
+        tone(POKEMON_SCALE[base + 2], 0.096, 0.075, { type: 'square', vol: 0.13 });
+        tone(POKEMON_SCALE[base + 3], 0.145, 0.26, { type: 'triangle', vol: 0.18 });
       },
       fail() {
-        // 고전 게임보이 "선택 불가" 저음 버저
-        tone(noteHz('E3'), 0, 0.08, { type: 'square', vol: 0.1 });
-        tone(noteHz('C3'), 0.07, 0.14, { type: 'square', vol: 0.1 });
+        tone(noteHz('D3'), 0, 0.08, { type: 'square', vol: 0.1 });
+        tone(noteHz('G2'), 0.07, 0.14, { type: 'square', vol: 0.1 });
       },
       shuffle() {
-        // PC 박스 / 순간이동 8비트 스윕
-        ['C5', 'G5', 'E5', 'B5', 'G5', 'C6'].forEach((n, i) => {
-          tone(noteHz(n), i * 0.042, 0.07, { type: 'square', vol: 0.11 });
+        ['D5', 'G5', 'B5', 'D6', 'B5', 'G6'].forEach((n, i) => {
+          tone(noteHz(n), i * 0.042, 0.075, { type: 'square', vol: 0.11 });
         });
       },
       hint() {
-        // 도감 스캔 / 트레이너 발견 3연타 핑!
-        tone(noteHz('A5'), 0, 0.055, { type: 'square', vol: 0.1 });
-        tone(noteHz('E6'), 0.055, 0.06, { type: 'square', vol: 0.11 });
-        tone(noteHz('A6'), 0.115, 0.16, { type: 'square', vol: 0.11 });
+        // 옐로우 마스코트 반짝 전격 트릴 핑!
+        tone(noteHz('G6'), 0, 0.05, { type: 'square', vol: 0.1 });
+        tone(noteHz('D6'), 0.05, 0.055, { type: 'square', vol: 0.1 });
+        tone(noteHz('B6'), 0.105, 0.16, { type: 'square', vol: 0.11 });
       },
       clear() {
-        // 체육관 배지 획득풍 8비트 팡파르!
+        // 옐로우 팡파르 빅토리! (G 메이저 8비트)
         const notes = [
-          ['C5', 0, 0.1],
-          ['E5', 0.09, 0.1],
-          ['G5', 0.18, 0.1],
-          ['C6', 0.27, 0.22],
-          ['G5', 0.45, 0.11],
-          ['C6', 0.56, 0.48],
+          ['D5', 0, 0.09],
+          ['G5', 0.085, 0.09],
+          ['B5', 0.17, 0.09],
+          ['D6', 0.255, 0.22],
+          ['B5', 0.44, 0.11],
+          ['G6', 0.55, 0.5],
         ];
         notes.forEach(([n, at, dur]) => {
           tone(noteHz(n), at, dur, { type: 'square', vol: 0.13 });
@@ -649,51 +650,51 @@
     },
     digimon: {
       select() {
-        // 디지바이스 디지털 버튼 크리스탈 첩
-        tone(noteHz('E6'), 0, 0.04, { type: 'sine', vol: 0.14 });
-        tone(noteHz('B6'), 0.025, 0.07, { type: 'triangle', vol: 0.13 });
+        // 맑은 오르골 빗살 + 디지바이스 유리알 핑
+        tone(noteHz('B5'), 0, 0.16, { type: 'sine', vol: 0.15, attack: 0.003 });
+        tone(noteHz('B6'), 0, 0.08, { type: 'sine', vol: 0.05, attack: 0.002 });
       },
       match(combo) {
-        // 디지볼루션 데이터 링크 반짝임
+        // 감성 오르골 아르페지오 하모니 울림
         const base = Math.min(Math.max(0, (combo || 1) - 1), DIGIMON_SCALE.length - 4);
-        tone(DIGIMON_SCALE[base], 0, 0.09, { type: 'sawtooth', vol: 0.08 });
-        tone(DIGIMON_SCALE[base + 1], 0.045, 0.11, { type: 'triangle', vol: 0.14 });
-        tone(DIGIMON_SCALE[base + 2], 0.09, 0.14, { type: 'sine', vol: 0.16 });
-        tone(DIGIMON_SCALE[base + 3], 0.135, 0.3, { type: 'sine', vol: 0.16 });
+        [0, 1, 2, 3].forEach(idx => {
+          const f = DIGIMON_SCALE[base + idx];
+          tone(f, idx * 0.055, 0.42, { type: 'sine', vol: 0.15, attack: 0.003 });
+          tone(f * 2, idx * 0.055, 0.18, { type: 'sine', vol: 0.045, attack: 0.002 });
+        });
       },
       fail() {
-        // 디지털 방화벽 글리치 드롭
-        tone(noteHz('Eb4'), 0, 0.085, { type: 'sawtooth', vol: 0.09, endFreq: noteHz('A3') });
-        tone(noteHz('A3'), 0.075, 0.13, { type: 'square', vol: 0.07 });
+        // 오르골 빗살이 부드럽게 잦아드는 듯한 저음 2음
+        tone(noteHz('D4'), 0, 0.14, { type: 'sine', vol: 0.14, attack: 0.004 });
+        tone(noteHz('A3'), 0.08, 0.2, { type: 'sine', vol: 0.14, attack: 0.004 });
       },
       shuffle() {
-        // 디지털 게이트 / 매트릭스 재구성 캐스케이드
-        ['A4', 'E5', 'B5', 'C#6', 'E6', 'A6'].forEach((n, i) => {
-          tone(noteHz(n), i * 0.04, 0.11, { type: 'sine', vol: 0.13 });
-          tone(noteHz(n), i * 0.04, 0.08, { type: 'sawtooth', vol: 0.045 });
+        // 태엽 감기듯 반짝이는 오르골 상승 스케일
+        ['E5', 'F#5', 'G5', 'B5', 'D6', 'E6', 'G6'].forEach((n, i) => {
+          const f = noteHz(n);
+          tone(f, i * 0.048, 0.34, { type: 'sine', vol: 0.13, attack: 0.003 });
+          tone(f * 2, i * 0.048, 0.14, { type: 'sine', vol: 0.035, attack: 0.002 });
         });
       },
       hint() {
-        // 디지바이스 레이더 신호 탐색 에코 핑
-        tone(noteHz('G#6'), 0, 0.16, { type: 'sine', vol: 0.14 });
-        tone(noteHz('E6'), 0.05, 0.14, { type: 'triangle', vol: 0.08 });
-        tone(noteHz('B6'), 0.11, 0.24, { type: 'sine', vol: 0.11 });
+        // 영롱한 오르골 에코 차임
+        tone(noteHz('B5'), 0, 0.32, { type: 'sine', vol: 0.14, attack: 0.003 });
+        tone(noteHz('F#6'), 0.075, 0.38, { type: 'sine', vol: 0.13, attack: 0.003 });
+        tone(noteHz('B6'), 0.15, 0.45, { type: 'sine', vol: 0.1, attack: 0.003 });
       },
       clear() {
-        // 진화 완료 / 디지털 히어로 빅토리 팡파르
+        // 벅차오르는 오르골 발라드 엔딩 화음
         const notes = [
-          ['E5', 0, 0.11],
-          ['F#5', 0.1, 0.11],
-          ['G#5', 0.2, 0.11],
-          ['A5', 0.3, 0.15],
-          ['B5', 0.44, 0.16],
-          ['E6', 0.58, 0.55],
+          ['E5', 0, 0.45],
+          ['B5', 0.1, 0.45],
+          ['E6', 0.2, 0.5],
+          ['F#6', 0.32, 0.5],
+          ['G6', 0.44, 0.85],
         ];
         notes.forEach(([n, at, dur]) => {
           const f = noteHz(n);
-          tone(f, at, dur, { type: 'sawtooth', vol: 0.08, detune: -5 });
-          tone(f, at, dur, { type: 'sawtooth', vol: 0.08, detune: 5 });
-          tone(f * 2, at, dur * 0.75, { type: 'sine', vol: 0.06 });
+          tone(f, at, dur, { type: 'sine', vol: 0.16, attack: 0.003 });
+          tone(f * 2, at, Math.min(0.32, dur * 0.45), { type: 'sine', vol: 0.05, attack: 0.002 });
         });
       },
     },
@@ -763,6 +764,12 @@
       compileArp,
       TRACKS,
       SFX,
+      POKEMON_MELODY,
+      POKEMON_HARM_BARS,
+      POKEMON_BASS,
+      DIGIMON_MELODY,
+      DIGIMON_COMB_ARP,
+      DIGIMON_BASS,
     },
   };
 
