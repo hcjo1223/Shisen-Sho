@@ -70,9 +70,13 @@ export interface TileThemeConfig {
   sparkles?: string[];
 }
 
+export type SoundThemeKey = 'fruit' | 'animal' | 'pokemon' | 'digimon';
+
 export interface SoundEngine {
   enabled: boolean;
   bgmEnabled: boolean;
+  theme: SoundThemeKey;
+  setTheme(theme: SoundThemeKey): void;
   unlock(): void;
   select(): void;
   match(combo: number): void;

@@ -102,6 +102,7 @@ export const THEME_META: Record<
     subtitle: string;
     tagline: string;
     uiLabel: string;
+    soundLabel: string;
     badge: string;
     badgeColor: 'pink' | 'green' | 'yellow' | 'cyan';
     heroTokens: ReadonlyArray<{label: string; color: TokenColor}>;
@@ -111,6 +112,7 @@ export const THEME_META: Record<
     subtitle: '상큼한 과일 & 채소 · 피치 코랄 과수원 UI',
     tagline: '상큼달콤 과일 농장 힐링 퍼즐',
     uiLabel: '피치 코랄 과수원',
+    soundLabel: '과수원 마림바 OST',
     badge: '과수원 무드',
     badgeColor: 'pink',
     heroTokens: [
@@ -125,6 +127,7 @@ export const THEME_META: Record<
     subtitle: '포근한 동물 친구들 · 클로버 숲속 초원 UI',
     tagline: '포근포근 숲속 동물 친구들 힐링 퍼즐',
     uiLabel: '클로버 숲속 초원',
+    soundLabel: '숲속 오르골 OST',
     badge: '초원 무드',
     badgeColor: 'green',
     heroTokens: [
@@ -139,6 +142,7 @@ export const THEME_META: Record<
     subtitle: '3D 클레이 1세대 36종 · 관동 몬스터볼 UI',
     tagline: '입체 클레이 피규어 포켓몬 1세대 사천성',
     uiLabel: '관동 몬스터볼',
+    soundLabel: '8비트 모험 칩튠 OST',
     badge: '3D 클레이',
     badgeColor: 'yellow',
     heroTokens: [
@@ -153,6 +157,7 @@ export const THEME_META: Record<
     subtitle: '3D 클레이 36종 · 디지털 디지바이스 UI',
     tagline: '입체 클레이 피규어 디지몬 어드벤처 사천성',
     uiLabel: '디지털 디지바이스',
+    soundLabel: '디지바이스 신스록 OST',
     badge: '3D 클레이',
     badgeColor: 'cyan',
     heroTokens: [

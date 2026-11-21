@@ -1144,7 +1144,8 @@ export function GameScreen({
           <Divider />
 
           <Switch
-            label="배경음악 (도트 BGM)"
+            label="배경음악 (BGM)"
+            description={THEME_META[settings.theme].soundLabel}
             labelPosition="start"
             labelSpacing="spread"
             value={settings.bgm}
@@ -1152,6 +1153,7 @@ export function GameScreen({
           />
           <Switch
             label="효과음 (SFX)"
+            description="테마별 효과음 재생"
             labelPosition="start"
             labelSpacing="spread"
             value={settings.sound}

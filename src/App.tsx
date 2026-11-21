@@ -86,6 +86,7 @@ function AppShell({
 
   const handleSelectTileTheme = useCallback(
     (theme: TileThemeKey) => {
+      Sound.theme = theme;
       Sound.unlock();
       onUpdateSettings({theme, uiTheme: THEME_UI_MAP[theme]});
       if (Sound.enabled) Sound.select();
@@ -200,11 +201,16 @@ export default function App() {
   }, []);
   const [settings, setSettings] = useState<GameSettings>(() => {
     const initial = loadSettings();
+    Sound.theme = initial.theme;
     Sound.enabled = initial.sound;
     Sound.bgmEnabled = initial.bgm;
     return initial;
   });
   const [stats, setStats] = useState<GameStats>(() => loadStats());
+
+  useEffect(() => {
+    Sound.theme = settings.theme;
+  }, [settings.theme]);
 
   const handleUpdateSettings = useCallback((patch: Partial<GameSettings>) => {
     setSettings(prev => {

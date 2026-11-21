@@ -310,7 +310,7 @@ export function HomeScreen({
                       />
                     </HStack>
                     <Text type="supporting" size="sm">
-                      선택한 테마에 맞춰 타일과 UI 분위기가 함께 바뀌어요
+                      선택한 테마에 맞춰 타일·UI·사운드 분위기가 함께 바뀌어요
                     </Text>
                   </VStack>
 
@@ -390,7 +390,7 @@ export function HomeScreen({
                       />
                     </HStack>
                     <Text type="supporting" size="sm">
-                      {`${THEMES[settings.theme].name} · ${activeThemeMeta.uiLabel} 테마 적용 중`}
+                      {`${THEMES[settings.theme].name} · ${activeThemeMeta.uiLabel} · ${activeThemeMeta.soundLabel}`}
                     </Text>
                   </VStack>
 
@@ -426,7 +426,8 @@ export function HomeScreen({
 
                   <Grid columns={{minWidth: 200, max: 2}} gap={2}>
                     <Switch
-                      label="배경음악 (도트 BGM)"
+                      label="배경음악 (BGM)"
+                      description={activeThemeMeta.soundLabel}
                       labelPosition="start"
                       labelSpacing="spread"
                       value={settings.bgm}
@@ -434,6 +435,7 @@ export function HomeScreen({
                     />
                     <Switch
                       label="효과음 (SFX)"
+                      description="테마별 효과음 재생"
                       labelPosition="start"
                       labelSpacing="spread"
                       value={settings.sound}

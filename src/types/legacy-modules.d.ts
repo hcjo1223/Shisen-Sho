@@ -64,19 +64,28 @@ declare module '../../js/themes.js' {
     name: string;
     icon: string;
     tiles: string[];
+    kind?: 'emoji' | 'sprite';
+    spriteCols?: number;
+    spriteRows?: number;
+    tints?: string[];
+    sparkles?: string[];
   }
 
   export const THEMES: Record<
-    'fruit' | 'animal' | 'dessert' | 'mix',
+    'fruit' | 'animal' | 'pokemon' | 'digimon',
     TileThemeConfig
   >;
   export const TINTS: string[];
 }
 
 declare module '../../js/sound.js' {
+  export type SoundThemeKey = 'fruit' | 'animal' | 'pokemon' | 'digimon';
+
   export interface SoundEngine {
     enabled: boolean;
     bgmEnabled: boolean;
+    theme: SoundThemeKey;
+    setTheme(theme: SoundThemeKey): void;
     unlock(): void;
     select(): void;
     match(combo: number): void;
